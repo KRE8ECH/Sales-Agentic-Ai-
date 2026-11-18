@@ -456,7 +456,8 @@ export async function draftWithLlm(
   lead: Lead,
   hooks: ResearchHook[],
   touch: Touch,
-  usedHookIds: string[]
+  usedHookIds: string[],
+  model?: string
 ): Promise<DraftResult | null> {
   if (!llmStatus().available) return null;
   const fresh = hooks.filter((h) => !usedHookIds.includes(h.id));
@@ -483,7 +484,7 @@ export async function draftWithLlm(
         `Channel rules: ${touch.channel === "linkedin" ? "under 300 characters, casual, no subject." : "subject line required, under 200 words."}`,
       ].join("\n"),
     },
-  ]);
+  ], { maxTokens: 1600, model });
   if (!raw) return null;
   const parsed = extractJson<{
     subject?: string;

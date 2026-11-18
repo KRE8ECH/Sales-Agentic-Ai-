@@ -41,14 +41,17 @@ export async function GET(req: Request) {
       hookIds: [],
     };
     const started = Date.now();
-    const draft = await draftWithLlm(lead, hooks, touch, []);
+    const override = url.searchParams.get("model") ?? undefined;
+    const draft = await draftWithLlm(lead, hooks, touch, [], override);
     return NextResponse.json({
       ok: Boolean(draft),
       latencyMs: Date.now() - started,
       lead: lead.company,
       hookCount: hooks.length,
+      usedModel: override ?? status.model,
       draft,
       error: draft ? null : getLastLlmError(),
+      raw: url.searchParams.has("debug") ? getLastLlmRaw() : undefined,
     });
   }
 
