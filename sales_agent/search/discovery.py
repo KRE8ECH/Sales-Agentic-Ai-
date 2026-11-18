@@ -3,7 +3,8 @@ import logging
 import re
 from datetime import datetime, timezone
 from html.parser import HTMLParser
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Callable
+from urllib.parse import urljoin, urlparse
 from sales_agent.search.duckduckgo import DuckDuckGoSearchTool
 from sales_agent.search.rag_engine import RAGEngine
 from sales_agent.llm.ollama_client import OllamaClient
@@ -237,9 +238,15 @@ VERIFIED_OFFLINE_COMPANIES["alphabet"] = VERIFIED_OFFLINE_COMPANIES["google"]
 # =========================================================================
 
 NAV_HEADING_PATTERNS = [
-    r"^(?:executive committee|board of directors|board of governance|board of|leadership team|leadership profiles?|leadership|management profiles?|management team|management|senior management|senior leadership|corporate governance|executive officers?|executive leadership|our leaders?|our team|our executive team|key executives?|key people|company leadership|executive biograph(?:y|ies)|executive profiles?|profile of|biography of|meet the team|meet our|officers and directors|members of the executive committee|members of|about us|home|overview)\b\s*[-:–—|]?\s*",
+    r"^(?:corporate executives?|executive committee|board of directors|board of governance|board of|leadership team|leadership profiles?|leadership|management profiles?|management team|management|senior management|senior leadership|corporate governance|executive officers?|executive leadership|our leaders?|our team|our executive team|key executives?|key people|company leadership|executive biograph(?:y|ies)|executive profiles?|profile of|biography of|meet the team|meet our|officers and directors|members of the executive committee|members of|about us|home|overview)\b\s*[-:–—|]?\s*",
     r"^(?:directors?|officers?|executives?|leaders?|members?|committee)\b\s*[-:–—|]?\s*"
 ]
+
+KNOWN_PAGE_HEADINGS = {
+    "corporate executives", "executive committee", "board of directors", "leadership team",
+    "management profiles", "our leaders", "executive officers", "about us", "leadership",
+    "management", "overview", "corporate governance", "senior management"
+}
 
 ROLE_PATTERNS: List[Tuple[str, str]] = [
     ("CEO Designate", r"\b(?:CEO|Chief Executive Officer)[-\s]+Designate\b"),
@@ -247,24 +254,25 @@ ROLE_PATTERNS: List[Tuple[str, str]] = [
     ("Co-CEO", r"\bCo[-\s]+(?:CEO|Chief Executive Officer)\b"),
     ("Chief Executive Officer & Managing Director", r"\b(?:Chief Executive Officer|CEO)\s*(?:&|and)\s*Managing Director\b"),
     ("Managing Director", r"\bManaging Director\b"),
-    ("Founder, President & CEO", r"\bFounder,?\s+President\s*(?:&|and)\s*CEO\b"),
-    ("President & CEO", r"\bPresident\s*(?:&|and)\s*CEO\b"),
+    ("Founder, President & CEO", r"\bFounder,?\s+President\s*(?:&|and)\s*(?:Chief Executive Officer|CEO)\b"),
+    ("Founder & CEO", r"\bFounder\s*(?:&|and)\s*(?:Chief Executive Officer|CEO)\b"),
+    ("President & CEO", r"\bPresident\s*(?:&|and)\s*(?:Chief Executive Officer|CEO)\b"),
     ("Chairman & CEO", r"\bChairman\s*(?:&|and)\s*(?:Chief Executive Officer|CEO)\b"),
     ("President & COO", r"\bPresident\s*(?:&|and)\s*(?:Chief Operating Officer|COO)\b"),
     ("President & CIO", r"\bPresident\s*(?:&|and)\s*(?:Chief Information Officer|CIO)\b"),
-    ("President", r"\bPresident\b"),
-    ("Chief Executive Officer", r"\b(?:Chief Executive Officer|CEO)\b"),
-    ("Chief Technology Officer & EVP of AI", r"\b(?:Chief Technology Officer|CTO)\s*(?:&|and)\s*EVP\s+of\s+AI\b"),
+    ("Chief Technology Officer & EVP of AI", r"\b(?:Chief Technology Officer|CTO)\s*(?:&|and)\s*(?:EVP|Executive Vice President)\s+of\s+AI\b"),
     ("Chief Technology Officer", r"\b(?:Chief Technology Officer|CTO)\b"),
-    ("Chief Scientist & Senior VP of Research", r"\bChief Scientist\s*(?:&|and)\s*Senior VP\s+of\s+Research\b"),
+    ("Chief Scientist & Senior VP of Research", r"\bChief Scientist\s*(?:&|and)\s*(?:Senior VP|Senior Vice President)\s+of\s+Research\b"),
     ("Chief Scientist", r"\bChief Scientist\b"),
-    ("Executive VP & Chief Financial Officer", r"\bExecutive VP\s*(?:&|and)\s*Chief Financial Officer\b"),
+    ("Executive VP & Chief Financial Officer", r"\b(?:Executive VP|Executive Vice President)\s*(?:&|and)\s*Chief Financial Officer\b"),
     ("Chief Financial Officer", r"\b(?:Chief Financial Officer|CFO)\b"),
     ("Chief Operating Officer", r"\b(?:Chief Operating Officer|COO)\b"),
     ("Chief People Officer", r"\bChief People Officer\b"),
     ("Group Head of Human Resources", r"\bGroup Head of (?:Human Resources|HR)\b"),
     ("Head of Human Resources", r"\bHead of (?:Human Resources|HR)\b"),
-    ("VP of Engineering", r"\bVP\s+(?:of\s+)?Engineering\b"),
+    ("VP of Engineering", r"\b(?:VP|Vice President)\s+(?:of\s+)?Engineering\b"),
+    ("President", r"(?<!Vice\s)(?<!Vice-)(?<!VP\s)\bPresident\b"),
+    ("Chief Executive Officer", r"\b(?:Chief Executive Officer|CEO)\b"),
     ("Executive Adviser", r"\b(?:Executive\s+)?Advis(?:er|or)\b"),
     ("Former CEO", r"\bFormer\s+(?:CEO|Chief Executive Officer)\b"),
 ]
@@ -290,7 +298,10 @@ def clean_person_name(raw_name: str, company: str = "") -> str:
         name = re.sub(r"\s*[-:–—|]?\s*" + re.escape(company) + r"$", "", name, flags=re.IGNORECASE).strip()
     name = re.sub(r"^(?:mr|mrs|ms|dr|prof|shri|sir)\.?\s+", "", name, flags=re.IGNORECASE).strip()
     name = re.sub(r",\s*(?:CEO|CTO|CFO|COO|President|Director|Founder|MD).*$", "", name, flags=re.IGNORECASE).strip()
-    return name.strip(" ,:;-–—|")
+    clean = name.strip(" ,:;-–—|")
+    if clean.lower() in KNOWN_PAGE_HEADINGS:
+        return ""
+    return clean
 
 def normalize_person_name(name: str) -> str:
     """Normalizes a person name for accurate duplicate detection across sources."""
@@ -314,10 +325,15 @@ def score_source_authority(source: Dict[str, str], company: str = "") -> int:
     official_leadership_indicators = [
         "/leadership", "/executives", "/corporate-executives", "/management-profiles",
         "/board-and-management", "/board-of-directors", "/our-leaders", "/executive-team",
-        "/about/management", "/about/leadership", "/investor/board"
+        "/about/management", "/about/leadership", "/investor/board", "/executive-officers",
+        "/exec/", "/people/"
     ]
     if any(ind in url for ind in official_leadership_indicators):
         score += 40
+
+    # Specific profile page link bonus
+    if any(p_ind in url for p_ind in ["-profile", "/profile/", "/biography/", ".html"]) or re.search(r"/[a-z]+-[a-z]+/?$", url):
+        score += 15
 
     if any(ind in title for ind in ["leadership", "executive biographies", "corporate executives", "board and management", "management profiles", "our leaders"]):
         score += 25
@@ -326,6 +342,96 @@ def score_source_authority(source: Dict[str, str], company: str = "") -> int:
         score += 15
 
     return score
+
+def fetch_page_content(url: str, timeout: float = 6.0) -> Optional[str]:
+    """
+    Safely retrieves HTML/text content from an official company leadership page.
+    Caps payload size at 250KB and handles SSL, timeouts, and network errors gracefully.
+    """
+    if not url or not url.startswith(("http://", "https://")):
+        return None
+    try:
+        import urllib.request
+        import ssl
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9"
+        }
+        req = urllib.request.Request(url, headers=headers)
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
+            if resp.status == 200:
+                raw_bytes = resp.read(250000)
+                return raw_bytes.decode("utf-8", errors="replace")
+    except Exception as e:
+        logger.debug(f"fetch_page_content failed for {url}: {e}")
+        return None
+    return None
+
+def is_official_leadership_url(item: Dict[str, str], company: str) -> bool:
+    """Determines whether a search result represents an official company leadership or executive page."""
+    url = (item.get("url") or "").lower()
+    title = (item.get("title") or "").lower()
+
+    if score_source_authority(item, company) >= 35:
+        return True
+
+    indicators = [
+        "/leadership", "/executives", "/corporate-executives", "/management-profiles",
+        "/board-and-management", "/board-of-directors", "/our-leaders", "/executive-team",
+        "/about/management", "/about/leadership", "/investor/board", "/executive-officers",
+        "/exec/", "/people/", "corporate-executives", "management-profiles"
+    ]
+    if any(ind in url for ind in indicators):
+        return True
+
+    if any(w in title for w in ["leadership", "corporate executives", "executive officers", "management profiles", "our leaders"]):
+        return True
+
+    return False
+
+def extract_company_domain(company: str, results: List[Dict[str, str]]) -> Optional[str]:
+    """Infers official corporate domain (e.g. nvidia.com, infosys.com) from search results."""
+    comp_clean = re.sub(r"[^\w]", "", company.lower())
+    for r in results:
+        url = r.get("url", "")
+        if url:
+            netloc = urlparse(url).netloc.lower()
+            if netloc.startswith("www."):
+                netloc = netloc[4:]
+            parts = netloc.split(".")
+            if len(parts) >= 2 and comp_clean in parts[0]:
+                return netloc
+    return None
+
+def extract_json_ld_persons(html: str, base_url: str = "") -> List[Dict[str, str]]:
+    """Extracts Schema.org Person structured data from JSON-LD tags."""
+    if not html or "<script" not in html.lower():
+        return []
+    persons = []
+    for match in re.finditer(r'<script\b[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.DOTALL | re.IGNORECASE):
+        try:
+            data = json.loads(match.group(1).strip())
+            items = data if isinstance(data, list) else [data]
+            for item in items:
+                if isinstance(item, dict):
+                    if item.get("@type") in ["Person", "Employee"] or "jobTitle" in item:
+                        name = item.get("name")
+                        title = item.get("jobTitle")
+                        url = item.get("url") or base_url
+                        if name and title:
+                            full_url = urljoin(base_url, url) if url else base_url
+                            persons.append({
+                                "name": name,
+                                "designation": title,
+                                "source_url": full_url
+                            })
+        except Exception:
+            pass
+    return persons
 
 def extract_role_from_text(text: str) -> Optional[str]:
     """Extracts exact executive designation preserving distinctions (CEO Designate vs CEO, MD, President)."""
@@ -374,28 +480,48 @@ def are_designations_conflicting(role1: str, role2: str) -> bool:
     return f1 != f2
 
 class LeadershipHTMLParser(HTMLParser):
-    """Structured HTML parser to extract leadership pairs (name, designation) from HTML fragments."""
-    def __init__(self):
+    """Structured HTML parser to extract leadership pairs (name, designation, individual source url) from HTML."""
+    def __init__(self, base_url: str = ""):
         super().__init__()
-        self.elements: List[Tuple[str, str]] = []
+        self.base_url = base_url
+        self.elements: List[Dict[str, Any]] = []
         self.current_tag: Optional[str] = None
+        self.current_attrs: Dict[str, str] = {}
         self.current_text: List[str] = []
+        self.active_href: Optional[str] = None
 
     def handle_starttag(self, tag: str, attrs: Any):
         if self.current_text:
             text = " ".join("".join(self.current_text).split())
             if text:
-                self.elements.append((self.current_tag or "", text))
+                self.elements.append({
+                    "tag": self.current_tag or "",
+                    "text": text,
+                    "href": self.active_href,
+                    "attrs": dict(self.current_attrs)
+                })
             self.current_text = []
         self.current_tag = tag.lower()
+        attr_dict = {k.lower(): (v or "") for k, v in attrs}
+        self.current_attrs = attr_dict
+        if tag.lower() == "a" and "href" in attr_dict:
+            self.active_href = attr_dict["href"]
 
     def handle_endtag(self, tag: str):
         if self.current_text:
             text = " ".join("".join(self.current_text).split())
             if text:
-                self.elements.append((self.current_tag or "", text))
+                self.elements.append({
+                    "tag": self.current_tag or "",
+                    "text": text,
+                    "href": self.active_href,
+                    "attrs": dict(self.current_attrs)
+                })
             self.current_text = []
+        if tag.lower() == "a":
+            self.active_href = None
         self.current_tag = None
+        self.current_attrs = {}
 
     def handle_data(self, data: str):
         self.current_text.append(data)
@@ -404,48 +530,80 @@ class LeadershipHTMLParser(HTMLParser):
         if self.current_text:
             text = " ".join("".join(self.current_text).split())
             if text:
-                self.elements.append((self.current_tag or "", text))
+                self.elements.append({
+                    "tag": self.current_tag or "",
+                    "text": text,
+                    "href": self.active_href,
+                    "attrs": dict(self.current_attrs)
+                })
             self.current_text = []
 
         pairs: List[Dict[str, str]] = []
-        name_tags = {"h1", "h2", "h3", "h4", "h5", "strong", "b", "dt", "th", "a", "span"}
+        name_tags = {"h1", "h2", "h3", "h4", "h5", "strong", "b", "dt", "th", "a", "span", "div"}
         role_tags = {"p", "dd", "td", "span", "div", "em", "i"}
 
         i = 0
         while i < len(self.elements):
-            tag, text = self.elements[i]
-            delim_match = re.match(r"^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*[-–—:|•,]\s*(.+)$", text)
+            el = self.elements[i]
+            text = el["text"]
+            href = el.get("href")
+            src_url = urljoin(self.base_url, href) if (href and not href.startswith("#")) else self.base_url
+
+            delim_match = re.match(r"^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*[-–—:|•]\s*(.+)$", text)
             if delim_match:
                 cand_name = clean_person_name(delim_match.group(1), company)
                 cand_role = extract_role_from_text(delim_match.group(2))
                 if cand_name and cand_role:
-                    pairs.append({"name": cand_name, "designation": cand_role})
-            elif tag in name_tags:
+                    pairs.append({"name": cand_name, "designation": cand_role, "source_url": src_url})
+            elif el["tag"] in name_tags:
                 clean_name = clean_person_name(text, company)
-                if re.match(r"^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}$", clean_name):
+                if clean_name and re.match(r"^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}$", clean_name):
+                    # Check next element for role
                     if i + 1 < len(self.elements):
-                        next_tag, next_text = self.elements[i + 1]
-                        if next_tag in role_tags:
-                            role = extract_role_from_text(next_text)
-                            if role:
-                                pairs.append({"name": clean_name, "designation": role})
-                                i += 1
+                        next_el = self.elements[i + 1]
+                        next_cand = clean_person_name(next_el["text"], company)
+                        if not (next_el["tag"] in name_tags and next_cand and re.match(r"^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}$", next_cand)):
+                            if next_el["tag"] in role_tags:
+                                role = extract_role_from_text(next_el["text"])
+                                if role:
+                                    pair_href = href or next_el.get("href")
+                                    pair_url = urljoin(self.base_url, pair_href) if (pair_href and not pair_href.startswith("#")) else self.base_url
+                                    pairs.append({"name": clean_name, "designation": role, "source_url": pair_url})
+                                    i += 1
             i += 1
         return pairs
 
 def extract_structured_candidates(chunks: List[Dict[str, str]], company: str) -> List[Dict[str, str]]:
-    """Extracts candidate leadership prospects using HTML parser and delimited text patterns."""
+    """Extracts candidate leadership prospects using HTML parser, JSON-LD, and delimited text patterns."""
     candidates: List[Dict[str, str]] = []
     seen_names = set()
 
     for c in chunks:
-        raw_text = (c.get("title", "") + "\n" + c.get("snippet", "")).strip()
+        base_url = c.get("url", "")
+        raw_html = c.get("raw_html") or c.get("content") or ""
+        snippet_text = (c.get("title", "") + "\n" + c.get("snippet", "")).strip()
 
-        # 1. HTML parsing if tags are present
-        if "<" in raw_text and ">" in raw_text:
+        # 1. JSON-LD structured persons
+        if raw_html:
+            for p_item in extract_json_ld_persons(raw_html, base_url):
+                c_name = clean_person_name(p_item.get("name", ""), company)
+                c_role = extract_role_from_text(p_item.get("designation", ""))
+                norm = normalize_person_name(c_name)
+                if c_name and c_role and norm not in seen_names:
+                    seen_names.add(norm)
+                    candidates.append({
+                        "name": c_name,
+                        "designation": c_role,
+                        "source_url": p_item.get("source_url") or base_url,
+                        "source_title": c.get("title", f"Official {company} Leadership")
+                    })
+
+        # 2. HTML parsing if HTML tags are present (in raw_html or snippet)
+        html_to_parse = raw_html if raw_html else (snippet_text if ("<" in snippet_text and ">" in snippet_text) else "")
+        if html_to_parse:
             try:
-                parser = LeadershipHTMLParser()
-                parser.feed(raw_text)
+                parser = LeadershipHTMLParser(base_url=base_url)
+                parser.feed(html_to_parse)
                 for pair in parser.get_structured_pairs(company):
                     norm = normalize_person_name(pair["name"])
                     if norm and norm not in seen_names:
@@ -453,22 +611,34 @@ def extract_structured_candidates(chunks: List[Dict[str, str]], company: str) ->
                         candidates.append({
                             "name": pair["name"],
                             "designation": pair["designation"],
-                            "source_url": c.get("url", ""),
-                            "source_title": c.get("title", "")
+                            "source_url": pair.get("source_url") or base_url,
+                            "source_title": c.get("title", f"Official {company} Leadership")
                         })
             except Exception:
                 pass
 
-        # 2. Delimited text patterns
+        # 3. Delimited and natural language text patterns on combined text
+        full_text = snippet_text
+        if raw_html:
+            clean_page_text = re.sub(r"<[^>]+>", " ", raw_html)
+            full_text = snippet_text + "\n" + clean_page_text[:50000]
+
         delim_patterns = [
-            r"(?:^|[.\n;•])\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*[-–—:|]\s*([A-Za-z\s&,/]+?)(?:[.\n;]|$)",
-            r"(?:^|[.\n;•])\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*,\s*(CEO Designate|Interim CEO|Co-CEO|Chief Executive Officer & Managing Director|CEO & Managing Director|Chief Executive Officer|CEO|Managing Director|Founder, President & CEO|President & CEO|Chairman & CEO|President & COO|President|Chief Technology Officer & EVP of AI|Chief Technology Officer|CTO|Chief Scientist|Executive VP & Chief Financial Officer|Chief Financial Officer|CFO|Chief Operating Officer|COO|Chief People Officer|Group Head of Human Resources|Head of Human Resources|VP of [A-Za-z]+)",
-            r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s+(?:serves as|is the|is appointed as|acts as|was named as|was appointed)\s+(?:the\s+)?(CEO Designate|Interim CEO|Co-CEO|Chief Executive Officer & Managing Director|CEO & Managing Director|Chief Executive Officer|CEO|Managing Director|Founder, President & CEO|President & CEO|Chairman & CEO|President & COO|President|Chief Technology Officer|CTO|Chief Scientist|Chief Financial Officer|CFO|Chief Operating Officer|COO|Chief People Officer|Head of Human Resources)"
+            r"(?:^|[\n;.•])\s*([A-Z][a-z]+(?:[^\S\r\n]+[A-Z][a-z]+){1,3})\s*[-–—:|]\s*([A-Za-z\s&,/]+?)(?:[.\n;]|$)",
+            r"(?:^|[\n;.•])\s*([A-Z][a-z]+(?:[^\S\r\n]+[A-Z][a-z]+){1,3})\s*(?:,|\()\s*(?:the\s+)?(?:founder\s*(?:and|&)\s*)?([A-Za-z\s&,/]+?)(?:\)|\b(?:of|at)\b|,|\.|$)",
+            r"\b(CEO|CTO|CFO|COO|President|Managing Director|Chief Scientist)\s+([A-Z][a-z]+(?:[^\S\r\n]+[A-Z][a-z]+){1,3})",
+            r"(?:^|[\n;.•])\s*([A-Z][a-z]+(?:[^\S\r\n]+[A-Z][a-z]+){1,3})\s+(?:serves as|is the|is appointed as|acts as|was named as|was appointed|is)\s+(?:the\s+)?(CEO Designate|Interim CEO|Co-CEO|Chief Executive Officer & Managing Director|CEO & Managing Director|Chief Executive Officer|CEO|Managing Director|Founder, President & CEO|Founder & CEO|President & CEO|Chairman & CEO|President & COO|President|Chief Technology Officer|CTO|Chief Scientist|Chief Financial Officer|CFO|Chief Operating Officer|COO|Chief People Officer|Head of Human Resources)"
         ]
+
         for pat in delim_patterns:
-            for match in re.finditer(pat, raw_text, re.MULTILINE):
-                c_name = clean_person_name(match.group(1), company)
-                c_role = extract_role_from_text(match.group(2))
+            for match in re.finditer(pat, full_text, re.MULTILINE):
+                if pat.startswith(r"\b(CEO|CTO"):
+                    c_name = clean_person_name(match.group(2), company)
+                    c_role = extract_role_from_text(match.group(1))
+                else:
+                    c_name = clean_person_name(match.group(1), company)
+                    c_role = extract_role_from_text(match.group(2))
+
                 norm = normalize_person_name(c_name)
                 if c_name and c_role and norm not in seen_names and re.match(r"^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}$", c_name):
                     seen_names.add(norm)
@@ -527,9 +697,15 @@ class CompanyDiscoveryEngine:
     8. Shows a prominent Demo Mode indicator when offline reference data is used
     """
 
-    def __init__(self, ollama: Optional[OllamaClient] = None, search_tool: Optional[DuckDuckGoSearchTool] = None):
+    def __init__(
+        self,
+        ollama: Optional[OllamaClient] = None,
+        search_tool: Optional[DuckDuckGoSearchTool] = None,
+        page_fetcher: Optional[Callable[[str], Optional[str]]] = None
+    ):
         self.ollama = ollama or OllamaClient()
         self.search_tool = search_tool or DuckDuckGoSearchTool()
+        self.page_fetcher = page_fetcher or fetch_page_content
         self.rag = RAGEngine()
 
     def discover(
@@ -595,10 +771,12 @@ class CompanyDiscoveryEngine:
             }
 
         # =========================================================================
-        # CASE 2: LIVE SEARCH MODE (DuckDuckGo Search with Verified Fallback)
+        # CASE 2: LIVE SEARCH MODE (DuckDuckGo Search with Official Page Parsing)
         # =========================================================================
         queries = [
             f"{company_clean} company overview business products",
+            f"{company_clean} corporate executives official leadership team",
+            f"{company_clean} board of directors executive officers",
             f"{company_clean} CEO founder leadership team",
             f"{company_clean} CTO Chief Technology Officer leadership",
             f"{company_clean} recent news announcements 2024 2025"
@@ -719,13 +897,62 @@ class CompanyDiscoveryEngine:
                 "prospects": []
             }
 
-        # Live search returned relevant chunks: Synthesize factual profile with designation verification
-        return self._synthesize_live_discovery(
+        # Fetch official leadership page content for items matching official leadership URLs
+        for item in relevant_chunks[:8]:
+            if is_official_leadership_url(item, company_clean) and not item.get("raw_html"):
+                fetched_html = self.page_fetcher(item.get("url", ""))
+                if fetched_html:
+                    item["raw_html"] = fetched_html
+
+        # Synthesize factual profile with designation verification
+        discovery_result = self._synthesize_live_discovery(
             company_clean,
             relevant_chunks,
             retrieval_timestamp,
             my_product_settings
         )
+
+        # Requirement 8: If only company context is found, do not immediately return NOT FOUND. Try additional official leadership sources.
+        if not discovery_result.get("prospects"):
+            logger.info(f"Company context retrieved for {company_clean}, but 0 verified prospects. Executing targeted official leadership queries...")
+            domain = extract_company_domain(company_clean, relevant_chunks)
+            secondary_queries = [
+                f'"{company_clean}" corporate executives official leadership team',
+                f'"{company_clean}" "Chief Executive Officer" OR "CEO" leadership profiles',
+                f'"{company_clean}" management profiles executive officers'
+            ]
+            if domain:
+                secondary_queries.insert(0, f"site:{domain} leadership OR corporate executives")
+
+            new_chunks = []
+            for q in secondary_queries:
+                sec_res = self.search_tool.search_with_status(q, max_results=3)
+                for item in sec_res.get("results", []):
+                    u = item.get("url")
+                    if u and u not in seen_urls:
+                        seen_urls.add(u)
+                        item["retrieval_timestamp"] = retrieval_timestamp
+                        live_results.append(item)
+                        relevant_chunks.append(item)
+                        new_chunks.append(item)
+
+            for item in new_chunks:
+                if is_official_leadership_url(item, company_clean) and not item.get("raw_html"):
+                    fetched = self.page_fetcher(item.get("url", ""))
+                    if fetched:
+                        item["raw_html"] = fetched
+
+            # Re-synthesize with secondary results
+            sec_result = self._synthesize_live_discovery(
+                company_clean,
+                relevant_chunks,
+                retrieval_timestamp,
+                my_product_settings
+            )
+            if sec_result.get("prospects"):
+                discovery_result = sec_result
+
+        return discovery_result
 
     def _verify_person_and_role(
         self,
@@ -733,7 +960,9 @@ class CompanyDiscoveryEngine:
         candidate_role: str,
         sources: List[Dict[str, str]],
         retrieval_timestamp: str,
-        company: str = ""
+        company: str = "",
+        candidate_source_url: str = "",
+        candidate_source_title: str = ""
     ) -> Optional[Dict[str, Any]]:
         """
         Verification engine:
@@ -752,18 +981,32 @@ class CompanyDiscoveryEngine:
 
         # Find matching sources mentioning the person
         matching_sources = []
+        name_clean_lower = clean_name.lower()
+        name_tokens = [w for w in name_clean_lower.split() if len(w) > 2]
+
         for s in sources:
-            text = (s.get("title", "") + " " + s.get("snippet", "")).lower()
+            text = (s.get("title", "") + " " + s.get("snippet", "") + " " + (s.get("raw_html", "")[:20000])).lower()
             text_norm = normalize_person_name(text)
-            if norm_name in text_norm or clean_name.lower() in text:
+            if norm_name in text_norm or name_clean_lower in text:
+                matching_sources.append(s)
+            elif name_tokens and sum(1 for tok in name_tokens if tok in text) >= len(name_tokens):
+                matching_sources.append(s)
+            elif candidate_source_url and s.get("url") == candidate_source_url:
                 matching_sources.append(s)
 
         if not matching_sources:
-            return None
+            if candidate_source_url:
+                best_source = {"url": candidate_source_url, "title": candidate_source_title or f"Official {company} Leadership"}
+            else:
+                return None
+        else:
+            # Sort matching sources by authority score (official leadership profiles first)
+            matching_sources.sort(key=lambda s: score_source_authority(s, company), reverse=True)
+            best_source = matching_sources[0]
 
-        # Sort matching sources by authority score (official leadership profiles first)
-        matching_sources.sort(key=lambda s: score_source_authority(s, company), reverse=True)
-        best_source = matching_sources[0]
+        # Determine best source URL (prefer specific profile page)
+        final_source_url = candidate_source_url if candidate_source_url else best_source.get("url", "")
+        final_source_title = candidate_source_title if candidate_source_title else best_source.get("title", f"Official {company} Leadership Profile")
 
         # Extract roles stated across all sources mentioning this person
         extracted_roles = []
@@ -772,6 +1015,12 @@ class CompanyDiscoveryEngine:
             r = extract_role_from_text(full_text)
             if r:
                 extracted_roles.append((r, s))
+            if s.get("raw_html"):
+                for line in s["raw_html"].splitlines():
+                    if clean_name.lower() in line.lower() or (name_tokens and all(tok in line.lower() for tok in name_tokens)):
+                        lr = extract_role_from_text(line)
+                        if lr:
+                            extracted_roles.append((lr, s))
 
         # Check for conflicting designations across sources
         if len(extracted_roles) >= 2:
@@ -782,8 +1031,8 @@ class CompanyDiscoveryEngine:
                             "name": clean_name,
                             "designation": "Conflicting sources – manual verification required",
                             "verification_status": "CONFLICTING_SOURCES",
-                            "source_url": best_source.get("url", ""),
-                            "source_title": best_source.get("title", ""),
+                            "source_url": final_source_url,
+                            "source_title": final_source_title,
                             "retrieval_timestamp": retrieval_timestamp,
                             "search_status": "SUCCESS"
                         }
@@ -799,11 +1048,17 @@ class CompanyDiscoveryEngine:
                     "name": clean_name,
                     "designation": "Role not verified",
                     "verification_status": "ROLE_NOT_VERIFIED",
-                    "source_url": best_source.get("url", ""),
-                    "source_title": best_source.get("title", ""),
+                    "source_url": final_source_url,
+                    "source_title": final_source_title,
                     "retrieval_timestamp": retrieval_timestamp,
                     "search_status": "SUCCESS"
                 }
+
+        # Check if candidate role was verified by structured official leadership extraction
+        cand_role_from_official = False
+        if cand_role_clean and cand_role_clean.lower() not in ["role not verified", "unknown", ""]:
+            if score_source_authority({"url": final_source_url, "title": final_source_title}, company) >= 30:
+                cand_role_from_official = True
 
         # If an exact role was extracted from sources
         if extracted_roles:
@@ -813,15 +1068,21 @@ class CompanyDiscoveryEngine:
             if not cand_role_clean or cand_role_clean.lower() in ["role not verified", "unknown"]:
                 final_desig = exact_role
                 v_status = "VERIFIED"
-                best_source = role_source
+                if not candidate_source_url:
+                    final_source_url = role_source.get("url", "")
+                    final_source_title = role_source.get("title", "")
             elif normalize_role_family(cand_role_clean) == normalize_role_family(exact_role):
                 final_desig = exact_role
                 v_status = "VERIFIED"
-                best_source = role_source
+                if not candidate_source_url:
+                    final_source_url = role_source.get("url", "")
+                    final_source_title = role_source.get("title", "")
             else:
                 final_desig = "Conflicting sources – manual verification required"
                 v_status = "CONFLICTING_SOURCES"
-                best_source = role_source
+        elif cand_role_from_official:
+            final_desig = cand_role_clean
+            v_status = "VERIFIED"
         else:
             # Fallback: check if role tokens are explicitly in source text
             role_clean = cand_role_clean
@@ -845,7 +1106,9 @@ class CompanyDiscoveryEngine:
             if role_verified and role_clean.lower() not in ["role not verified", "unknown", ""]:
                 final_desig = role_clean
                 v_status = "VERIFIED"
-                best_source = best_match_source
+                if not candidate_source_url:
+                    final_source_url = best_match_source.get("url", "")
+                    final_source_title = best_match_source.get("title", "")
             else:
                 final_desig = "Role not verified"
                 v_status = "ROLE_NOT_VERIFIED"
@@ -854,8 +1117,8 @@ class CompanyDiscoveryEngine:
             "name": clean_name,
             "designation": final_desig,
             "verification_status": v_status,
-            "source_url": best_source.get("url", ""),
-            "source_title": best_source.get("title", ""),
+            "source_url": final_source_url,
+            "source_title": final_source_title,
             "retrieval_timestamp": retrieval_timestamp,
             "search_status": "SUCCESS"
         }
@@ -970,7 +1233,15 @@ Return valid JSON with these exact keys:
         for p in candidate_prospects:
             p_name = p.get("name", "").strip()
             p_role = p.get("designation", "").strip()
-            verified = self._verify_person_and_role(p_name, p_role, chunks, retrieval_timestamp, company=company)
+            verified = self._verify_person_and_role(
+                p_name,
+                p_role,
+                chunks,
+                retrieval_timestamp,
+                company=company,
+                candidate_source_url=p.get("source_url", ""),
+                candidate_source_title=p.get("source_title", "")
+            )
             if verified:
                 verified["company"] = company
                 verified["professional_relevance"] = p.get("professional_relevance", f"Leadership member at {company}")
@@ -979,10 +1250,15 @@ Return valid JSON with these exact keys:
         # 4. Deduplicate prospects using normalized full name + company
         deduped = deduplicate_prospects(raw_verified, company)
 
-        verified_prospects = []
-        for idx, p in enumerate(deduped[:3]):
+        verified_prospects = [p for p in deduped if p.get("verification_status") == "VERIFIED"]
+        if not verified_prospects and deduped:
+            # If no verified but other candidates exist (e.g. unverified/conflicting)
+            final_prospects = deduped[:3]
+        else:
+            final_prospects = verified_prospects[:3]
+
+        for idx, p in enumerate(final_prospects):
             p["id"] = idx + 1
-            verified_prospects.append(p)
 
         sources_retrieved = [
             {
@@ -993,8 +1269,9 @@ Return valid JSON with these exact keys:
             for c in chunks[:5]
         ]
 
+        has_verified_leadership = len(verified_prospects) > 0
         return {
-            "status": "OK" if verified_prospects else "PARTIAL",
+            "status": "OK" if has_verified_leadership else "PARTIAL",
             "search_status": "SUCCESS",
             "data_source": "LIVE_SEARCH",
             "is_demo_mode": False,
@@ -1003,8 +1280,8 @@ Return valid JSON with these exact keys:
             "business_activities": business_activities,
             "recent_announcements": recent_announcements,
             "potential_business_needs": potential_needs,
-            "prospects": verified_prospects,
+            "prospects": final_prospects if has_verified_leadership else [],
             "sources_retrieved": sources_retrieved,
             "retrieval_timestamp": retrieval_timestamp,
-            "search_warning": None if verified_prospects else "Company context retrieved, but specific executive designations could not be verified in snippets."
+            "search_warning": None if has_verified_leadership else f"Company overview retrieved, but executive leadership designations for '{company}' could not be verified in public official leadership pages or verified announcements."
         }

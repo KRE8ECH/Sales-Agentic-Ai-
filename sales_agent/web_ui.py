@@ -1491,13 +1491,22 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                         f"</div>"
                     )
                 elif disc.get("status") == "NOT_FOUND" or not disc.get("prospects"):
+                    overview_html = ""
+                    if disc.get("company_overview") and disc.get("company_overview") not in ["NOT FOUND", "Search Failed"]:
+                        overview_html = f"<p>{disc.get('company_overview')}</p><br>"
                     reply_text = (
                         f"🏢 <strong>Company Discovery: {company_target}</strong><br><br>"
+                        f"{overview_html}"
                         f"<strong>Status: NOT FOUND</strong><br>"
                         f"<p style='color:#f87171;'>{disc.get('search_warning') or 'Search returned 0 verified leadership results for this company. Zero employee names were invented.'}</p>"
                     )
                 else:
-                    header_badge = "<span class='badge' style='background:#065f46; color:#34d399; border:1px solid #10b981;'>VERIFIED RESEARCH</span>"
+                    if disc.get("data_source") == "LIVE_SEARCH":
+                        header_badge = "<span class='badge' style='background:#065f46; color:#34d399; border:1px solid #10b981;'>LIVE SEARCH • VERIFIED RESEARCH</span>"
+                    elif disc.get("is_demo_mode") or disc.get("data_source") in ["DEMO_DATA", "DEMO_MODE"]:
+                        header_badge = "<span class='badge' style='background:#1e3a8a; color:#93c5fd; border:1px solid #3b82f6;'>DEMO MODE • VERIFIED RESEARCH</span>"
+                    else:
+                        header_badge = "<span class='badge' style='background:#065f46; color:#34d399; border:1px solid #10b981;'>VERIFIED RESEARCH</span>"
 
                     reply_text = (
                         f"🏢 <strong>Company Discovery: {disc['company_name']}</strong> {header_badge}<br><br>"

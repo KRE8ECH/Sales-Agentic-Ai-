@@ -256,8 +256,15 @@ def handle_company_discovery(orchestrator: OutreachOrchestrator, db: Database, c
         return
 
     # 3. Data Source Badging
+    if disc.get("data_source") == "LIVE_SEARCH":
+        badge_name = "[bold green][LIVE SEARCH • VERIFIED RESEARCH][/bold green]"
+    elif disc.get("is_demo_mode") or disc.get("data_source") in ["DEMO_DATA", "DEMO_MODE"]:
+        badge_name = "[bold blue][DEMO MODE • VERIFIED RESEARCH][/bold blue]"
+    else:
+        badge_name = "[bold green][VERIFIED RESEARCH][/bold green]"
+
     source_badge = (
-        f"[bold green][VERIFIED RESEARCH][/bold green] "
+        f"{badge_name} "
         f"([cyan]Status: {disc.get('search_status', 'SUCCESS')}[/cyan] | [dim]Retrieved: {disc.get('retrieval_timestamp')}[/dim])"
     )
 
