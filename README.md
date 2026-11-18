@@ -98,7 +98,7 @@ time, so the audit trail reads consistently.
 | GET/POST | `/api/leads` | List / create leads |
 | GET/POST | `/api/pipeline/run` | `{leadId}` — run research → plan → draft → send (GET reads it from the query string) |
 | POST | `/api/sim/advance` | `{days}` — advance the clock, dispatch, reply, classify, decide |
-| POST | `/api/sim/reset` | Reseed everything |
+| GET/POST | `/api/sim/reset` | Reseed everything (GET for link-driven demos) |
 | POST | `/api/inbox/simulate` | `{leadId, intent}` — generate a realistic reply, classify, decide |
 | POST | `/api/inbox/reply` | `{leadId, body}` — paste a real reply, classify, decide |
 | POST | `/api/replies/[id]/classify` | Re-run classification + next-step |
