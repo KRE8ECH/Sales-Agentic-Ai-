@@ -24,83 +24,103 @@ HTML_PAGE = """<!DOCTYPE html>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --card-border: #334155;
-      --primary: #38bdf8;
-      --primary-hover: #0284c7;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --accent-green: #10b981;
-      --accent-amber: #f59e0b;
-      --accent-red: #ef4444;
-      --accent-purple: #a855f7;
+      --bg: #000000;
+      --card-bg: #0a0a0a;
+      --card-border: #262626;
+      --card-border-hover: #525252;
+      --primary: #ffffff;
+      --primary-hover: #e5e5e5;
+      --text: #fafafa;
+      --text-muted: #a1a1aa;
+      --text-subtle: #71717a;
+      --surface-1: #0a0a0a;
+      --surface-2: #121214;
+      --surface-3: #18181b;
+      --accent-white: #ffffff;
+      --accent-black: #000000;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       display: flex;
       height: 100vh;
       overflow: hidden;
+      -webkit-font-smoothing: antialiased;
     }
+
+    /* Custom Minimal Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #000000; }
+    ::-webkit-scrollbar-thumb { background: #262626; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #525252; }
+
     /* Sidebar */
     .sidebar {
       width: 280px;
-      background-color: #0b1120;
+      background-color: #000000;
       border-right: 1px solid var(--card-border);
       display: flex;
       flex-direction: column;
-      padding: 20px;
+      padding: 24px 20px;
     }
     .brand {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 28px;
     }
     .brand-icon {
       width: 36px;
       height: 36px;
-      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      background: #ffffff;
+      color: #000000;
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
+      font-size: 18px;
+      font-weight: 700;
+      border: 1px solid #ffffff;
     }
-    .brand h2 { font-size: 16px; font-weight: 700; color: #fff; line-height: 1.2; }
-    .brand span { font-size: 11px; color: var(--primary); font-weight: 500; }
+    .brand h2 { font-size: 16px; font-weight: 700; color: #ffffff; letter-spacing: -0.3px; line-height: 1.2; }
+    .brand span { font-size: 11px; color: var(--text-muted); font-weight: 500; }
     
     .nav-tabs {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
       flex: 1;
     }
     .nav-btn {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 12px 14px;
-      border-radius: 8px;
+      padding: 10px 14px;
+      border-radius: 6px;
       background: transparent;
       color: var(--text-muted);
-      border: none;
+      border: 1px solid transparent;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
       text-align: left;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
     }
-    .nav-btn:hover { background: #1e293b; color: #fff; }
-    .nav-btn.active { background: #1e293b; color: var(--primary); font-weight: 600; border-left: 3px solid var(--primary); }
+    .nav-btn:hover { background: #121214; color: #ffffff; border-color: #262626; }
+    .nav-btn.active {
+      background: #18181b;
+      color: #ffffff;
+      font-weight: 600;
+      border: 1px solid #3f3f46;
+      border-left: 3px solid #ffffff;
+    }
 
     .ollama-status-box {
-      background: #1e293b;
+      background: #0a0a0a;
       border: 1px solid var(--card-border);
-      border-radius: 10px;
+      border-radius: 8px;
       padding: 14px;
       font-size: 12px;
     }
@@ -109,8 +129,9 @@ HTML_PAGE = """<!DOCTYPE html>
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--accent-green);
-      margin-right: 6px;
+      background: #ffffff;
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+      margin-right: 8px;
     }
 
     /* Main Area */
@@ -119,59 +140,67 @@ HTML_PAGE = """<!DOCTYPE html>
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      background: #000000;
     }
     .top-header {
       height: 65px;
       border-bottom: 1px solid var(--card-border);
-      background: #0f172a;
+      background: #000000;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 28px;
     }
-    .top-header h1 { font-size: 18px; font-weight: 600; }
+    .top-header h1 { font-size: 16px; font-weight: 600; color: #ffffff; letter-spacing: -0.2px; }
     .header-actions {
       display: flex;
       align-items: center;
       gap: 12px;
     }
     .btn-primary {
-      background: linear-gradient(135deg, #38bdf8, #0284c7);
-      color: #fff;
-      border: none;
-      padding: 8px 18px;
-      border-radius: 8px;
+      background: #ffffff;
+      color: #000000;
+      border: 1px solid #ffffff;
+      padding: 8px 16px;
+      border-radius: 6px;
       font-weight: 600;
       font-size: 13px;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 8px;
-      transition: opacity 0.2s;
+      transition: all 0.15s ease;
     }
-    .btn-primary:hover { opacity: 0.9; }
+    .btn-primary:hover {
+      background: #e5e5e5;
+      border-color: #e5e5e5;
+    }
 
     .btn-demo {
-      background: #1e293b;
-      color: #38bdf8;
-      border: 1px solid #38bdf8;
+      background: #0a0a0a;
+      color: #fafafa;
+      border: 1px solid var(--card-border);
       padding: 8px 14px;
-      border-radius: 8px;
-      font-weight: 600;
+      border-radius: 6px;
+      font-weight: 500;
       font-size: 13px;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
     }
-    .btn-demo:hover { background: rgba(56, 189, 248, 0.15); }
+    .btn-demo:hover {
+      background: #18181b;
+      border-color: #ffffff;
+      color: #ffffff;
+    }
 
     .btn-approve {
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: #fff;
-      border: none;
-      padding: 7px 14px;
+      background: #ffffff;
+      color: #000000;
+      border: 1px solid #ffffff;
+      padding: 6px 14px;
       border-radius: 6px;
       font-weight: 600;
       font-size: 12px;
@@ -179,14 +208,14 @@ HTML_PAGE = """<!DOCTYPE html>
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      transition: opacity 0.2s;
+      transition: all 0.15s ease;
     }
-    .btn-approve:hover { opacity: 0.9; }
+    .btn-approve:hover { background: #e5e5e5; }
 
     .btn-action-sm {
-      background: linear-gradient(135deg, #38bdf8, #0284c7);
-      color: #fff;
-      border: none;
+      background: #ffffff;
+      color: #000000;
+      border: 1px solid #ffffff;
       padding: 6px 12px;
       border-radius: 6px;
       font-weight: 600;
@@ -195,13 +224,15 @@ HTML_PAGE = """<!DOCTYPE html>
       display: inline-flex;
       align-items: center;
       gap: 4px;
+      transition: all 0.15s ease;
     }
-    .btn-action-sm:hover { opacity: 0.9; }
+    .btn-action-sm:hover { background: #e5e5e5; }
 
     .content-viewport {
       flex: 1;
       overflow-y: auto;
       padding: 24px 28px;
+      background: #000000;
     }
 
     /* Tab Sections */
@@ -216,16 +247,16 @@ HTML_PAGE = """<!DOCTYPE html>
     }
     .chat-container {
       flex: 1;
-      background: var(--card-bg);
+      background: #0a0a0a;
       border: 1px solid var(--card-border);
-      border-radius: 12px;
+      border-radius: 10px;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
     .chat-messages {
       flex: 1;
-      padding: 20px;
+      padding: 24px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -234,114 +265,129 @@ HTML_PAGE = """<!DOCTYPE html>
     .message {
       max-width: 80%;
       padding: 14px 18px;
-      border-radius: 12px;
+      border-radius: 10px;
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.6;
     }
     .message.agent {
-      background: #0b1120;
+      background: #121214;
       border: 1px solid var(--card-border);
+      color: #fafafa;
       align-self: flex-start;
       border-top-left-radius: 2px;
     }
     .message.user {
-      background: linear-gradient(135deg, #0284c7, #2563eb);
-      color: #fff;
+      background: #ffffff;
+      color: #000000;
+      font-weight: 500;
       align-self: flex-end;
       border-top-right-radius: 2px;
+      border: 1px solid #ffffff;
     }
     .chat-input-bar {
       padding: 16px 20px;
-      background: #0f172a;
+      background: #000000;
       border-top: 1px solid var(--card-border);
       display: flex;
       gap: 12px;
     }
     .chat-input {
       flex: 1;
-      background: #1e293b;
+      background: #0a0a0a;
       border: 1px solid var(--card-border);
-      color: #fff;
+      color: #ffffff;
       padding: 12px 16px;
-      border-radius: 8px;
+      border-radius: 6px;
       font-size: 14px;
       outline: none;
+      transition: border-color 0.15s ease;
     }
-    .chat-input:focus { border-color: var(--primary); }
+    .chat-input:focus { border-color: #ffffff; }
 
     /* Grid & Cards */
     .lead-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 18px;
+      gap: 16px;
       margin-top: 18px;
     }
     .lead-card {
-      background: var(--card-bg);
+      background: #0a0a0a;
       border: 1px solid var(--card-border);
-      border-radius: 12px;
+      border-radius: 8px;
       padding: 20px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
     }
     .lead-card:hover {
-      border-color: var(--primary);
-      transform: translateY(-2px);
+      border-color: #525252;
+      transform: translateY(-1px);
     }
     .lead-card.selected {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 1px var(--primary);
+      border-color: #ffffff;
+      background: #121214;
     }
+
+    /* Badges */
     .badge {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
-      padding: 4px 8px;
-      border-radius: 6px;
+      padding: 3px 8px;
+      border-radius: 4px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #ffffff;
+      display: inline-block;
     }
-    .badge-NEW { background: #334155; color: #cbd5e1; }
-    .badge-AWAITING_APPROVAL { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
-    .badge-IN_SEQUENCE { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-    .badge-ESCALATED { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-    .badge-PAUSED { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-    .badge-STOPPED { background: rgba(239, 68, 68, 0.2); color: #f87171; }
-    .badge-COMPLETED { background: #1e293b; color: #94a3b8; }
-    .badge-SENT { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-    .badge-LIVE { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
-    .badge-DEMO { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; }
+    .badge-NEW { background: #18181b; color: #a1a1aa; border-color: #27272a; }
+    .badge-AWAITING_APPROVAL { background: #18181b; color: #ffffff; border-color: #71717a; }
+    .badge-IN_SEQUENCE { background: #18181b; color: #ffffff; border-color: #52525b; }
+    .badge-ESCALATED { background: #ffffff; color: #000000; border-color: #ffffff; }
+    .badge-PAUSED { background: #18181b; color: #d4d4d8; border-color: #52525b; }
+    .badge-STOPPED { background: #0a0a0a; color: #71717a; border-color: #262626; }
+    .badge-COMPLETED { background: #18181b; color: #a1a1aa; border-color: #27272a; }
+    .badge-SENT { background: #18181b; color: #ffffff; border-color: #52525b; }
+    .badge-LIVE { background: #ffffff; color: #000000; border-color: #ffffff; }
+    .badge-DEMO { background: #18181b; color: #ffffff; border-color: #52525b; }
 
     /* Modal */
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.85);
       display: none;
       align-items: center;
       justify-content: center;
       z-index: 100;
+      backdrop-filter: blur(4px);
     }
     .modal-backdrop.open { display: flex; }
     .modal {
-      background: #1e293b;
+      background: #0a0a0a;
       border: 1px solid var(--card-border);
       width: 520px;
-      border-radius: 12px;
+      border-radius: 10px;
       padding: 24px;
+      color: #ffffff;
     }
-    .modal h2 { margin-bottom: 16px; font-size: 18px; }
+    .modal h2 { margin-bottom: 16px; font-size: 17px; font-weight: 600; }
     .form-group { margin-bottom: 14px; }
     .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
     .form-group input, .form-group textarea {
       width: 100%;
-      background: #0f172a;
+      background: #121214;
       border: 1px solid var(--card-border);
-      color: #fff;
+      color: #ffffff;
       padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 14px;
+      border-radius: 6px;
+      font-size: 13px;
       font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s ease;
     }
+    .form-group input:focus, .form-group textarea:focus { border-color: #ffffff; }
     .modal-actions {
       display: flex;
       justify-content: flex-end;
@@ -349,96 +395,105 @@ HTML_PAGE = """<!DOCTYPE html>
       margin-top: 20px;
     }
     .btn-secondary {
-      background: #334155;
-      color: #fff;
-      border: none;
+      background: #18181b;
+      color: #ffffff;
+      border: 1px solid var(--card-border);
       padding: 8px 16px;
-      border-radius: 8px;
+      border-radius: 6px;
       cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s ease;
     }
+    .btn-secondary:hover { background: #27272a; border-color: #525252; }
 
     /* Decision Log Table */
     .table-container {
-      background: var(--card-bg);
+      background: #0a0a0a;
       border: 1px solid var(--card-border);
-      border-radius: 12px;
+      border-radius: 8px;
       overflow: hidden;
       margin-top: 18px;
     }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th {
-      background: #0b1120;
+      background: #000000;
       text-align: left;
-      padding: 14px 18px;
+      padding: 12px 18px;
       color: var(--text-muted);
       font-weight: 600;
       border-bottom: 1px solid var(--card-border);
+      font-size: 12px;
+      letter-spacing: 0.3px;
     }
     td { padding: 14px 18px; border-bottom: 1px solid var(--card-border); }
     tr:last-child td { border-bottom: none; }
-    .reasoning-cell { color: #cbd5e1; line-height: 1.4; }
+    tr:hover td { background: #121214; }
+    .reasoning-cell { color: #d4d4d8; line-height: 1.5; font-size: 13px; }
 
     /* Dossier & Sequence Viewer */
     .panel-box {
-      background: var(--card-bg);
+      background: #0a0a0a;
       border: 1px solid var(--card-border);
-      border-radius: 12px;
+      border-radius: 8px;
       padding: 20px;
       margin-bottom: 20px;
     }
     .panel-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--primary);
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
       margin-bottom: 12px;
       display: flex;
       align-items: center;
       gap: 8px;
+      letter-spacing: -0.2px;
     }
 
     .warning-box {
-      background: rgba(245, 158, 11, 0.15);
-      border: 1px solid var(--accent-amber);
-      color: #fbbf24;
+      background: #121214;
+      border: 1px solid #525252;
+      color: #ffffff;
       padding: 12px 16px;
-      border-radius: 8px;
+      border-radius: 6px;
       margin-bottom: 16px;
       font-size: 13px;
     }
 
     .error-box {
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid var(--accent-red);
-      color: #f87171;
+      background: #121214;
+      border: 1px solid #71717a;
+      color: #ffffff;
       padding: 12px 16px;
-      border-radius: 8px;
+      border-radius: 6px;
       margin-bottom: 16px;
       font-size: 13px;
     }
 
     .source-link {
-      color: var(--primary);
+      color: #ffffff;
       text-decoration: underline;
+      text-underline-offset: 3px;
       font-size: 12px;
       display: inline-block;
       margin-top: 3px;
     }
+    .source-link:hover { color: #d4d4d8; }
 
     /* Prospect Card in Discovery */
     .prospect-card {
-      background: #0b1120;
+      background: #121214;
       border: 1px solid var(--card-border);
-      border-radius: 10px;
+      border-radius: 8px;
       padding: 16px;
       margin-bottom: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
     }
     .prospect-card:hover {
-      border-color: var(--primary);
-      background: #111a2e;
+      border-color: #525252;
+      background: #18181b;
     }
 
     .dropdown {
@@ -449,23 +504,25 @@ HTML_PAGE = """<!DOCTYPE html>
       display: none;
       position: absolute;
       right: 0;
-      background-color: #1e293b;
+      background-color: #0a0a0a;
       min-width: 260px;
-      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+      box-shadow: 0px 12px 32px rgba(0,0,0,0.9);
       border: 1px solid var(--card-border);
-      border-radius: 8px;
+      border-radius: 6px;
       z-index: 10;
       overflow: hidden;
     }
     .dropdown-content a {
-      color: #f8fafc;
+      color: #fafafa;
       padding: 12px 16px;
       text-decoration: none;
       display: block;
       font-size: 13px;
       cursor: pointer;
+      border-bottom: 1px solid #18181b;
     }
-    .dropdown-content a:hover { background-color: #0f172a; color: var(--primary); }
+    .dropdown-content a:last-child { border-bottom: none; }
+    .dropdown-content a:hover { background-color: #18181b; color: #ffffff; }
     .dropdown:hover .dropdown-content { display: block; }
   </style>
 </head>
@@ -564,7 +621,7 @@ HTML_PAGE = """<!DOCTYPE html>
               <a href="javascript:void(0)" onclick="setDiscoveryInput('Microsoft')" style="color:var(--primary)">Microsoft</a>
               <a href="javascript:void(0)" onclick="setDiscoveryInput('Infosys')" style="color:var(--primary)">Infosys</a>
             </div>
-            <label style="font-size:12px; color:#a7f3d0; display:flex; align-items:center; gap:6px; cursor:pointer; background:#064e3b; border:1px solid #059669; padding:6px 12px; border-radius:6px;">
+            <label style="font-size:12px; color:#ffffff; display:flex; align-items:center; gap:6px; cursor:pointer; background:#121214; border:1px solid #262626; padding:6px 12px; border-radius:6px;">
               <input type="checkbox" id="discovery-demo-mode"> <strong>⚡ Fast Verified Profiles</strong>
             </label>
           </div>
@@ -865,18 +922,18 @@ HTML_PAGE = """<!DOCTYPE html>
       // Scenario 1: Live Search Failed
       if (data.status === 'SEARCH_FAILED') {
         box.innerHTML = `
-          <div style="background:#1e1b4b; border:2px solid #ef4444; border-radius:8px; padding:16px; margin-bottom:16px;">
+          <div style="background:#121214; border:1px solid #525252; border-radius:8px; padding:16px; margin-bottom:16px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <strong style="font-size:16px; color:#f87171;">🔴 Search Status: Connection Timed Out</strong>
-              <span class="badge" style="background:#7f1d1d; color:#fca5a5;">SEARCH STATUS: FAILED</span>
+              <strong style="font-size:15px; color:#ffffff;">Search Status: Connection Timed Out</strong>
+              <span class="badge" style="background:#18181b; color:#ffffff; border:1px solid #525252;">SEARCH STATUS: FAILED</span>
             </div>
-            <p style="margin-top:8px; color:#fca5a5; font-size:13px;">${data.search_error || 'Search connection timed out or failed to reach web search service.'}</p>
-            <div style="margin-top:10px; padding:10px; background:#0f172a; border-radius:6px; border:1px solid #334155; font-size:12px; color:#94a3b8;">
+            <p style="margin-top:8px; color:#a1a1aa; font-size:13px;">${data.search_error || 'Search connection timed out or failed to reach web search service.'}</p>
+            <div style="margin-top:10px; padding:10px; background:#000000; border-radius:6px; border:1px solid #262626; font-size:12px; color:#a1a1aa;">
               🛡️ <strong>Anti-Hallucination Policy:</strong> Zero artificial or unverified employee names were generated.
             </div>
             <div style="margin-top:12px; display:flex; gap:12px; align-items:center;">
               <button onclick="setDiscoveryInput('NVIDIA');" class="btn-primary" style="font-size:12px; padding:6px 12px; cursor:pointer;">🔍 Research Verified Preset (NVIDIA)</button>
-              <span style="font-size:11px; color:#64748b;">Timestamp: ${data.retrieval_timestamp || 'LIVE'}</span>
+              <span style="font-size:11px; color:#71717a;">Timestamp: ${data.retrieval_timestamp || 'LIVE'}</span>
             </div>
           </div>
         `;
@@ -887,9 +944,9 @@ HTML_PAGE = """<!DOCTYPE html>
       if (data.status === 'NOT_FOUND' || (data.company_overview === 'NOT FOUND' && (!data.prospects || !data.prospects.length))) {
         box.innerHTML = `
           <div class="error-box">
-            <strong>❌ NOT FOUND:</strong> ${data.search_warning || 'Could not verify public leadership or company overview for this company.'}
-            <br><small style="color:#cbd5e1;">Zero artificial employee names were invented.</small>
-            <br><small style="color:#64748b;">Search Status: ${data.search_status} | Timestamp: ${data.retrieval_timestamp}</small>
+            <strong>NOT FOUND:</strong> ${data.search_warning || 'Could not verify public leadership or company overview for this company.'}
+            <br><small style="color:#a1a1aa;">Zero artificial employee names were invented.</small>
+            <br><small style="color:#71717a;">Search Status: ${data.search_status} | Timestamp: ${data.retrieval_timestamp}</small>
           </div>
         `;
         return;
@@ -897,12 +954,12 @@ HTML_PAGE = """<!DOCTYPE html>
 
       let html = '';
       html += `
-        <div style="background:#064e3b; border:1px solid #059669; color:#a7f3d0; padding:10px 14px; border-radius:8px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="background:#0a0a0a; border:1px solid #262626; color:#ffffff; padding:12px 16px; border-radius:8px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <span style="font-weight:700; color:#34d399;">🟢 VERIFIED COMPANY RESEARCH</span>
-            <span style="font-size:11px; color:#a7f3d0; margin-left:12px;">Status: <strong>${data.search_status || 'SUCCESS'}</strong></span>
+            <span style="font-weight:700; color:#ffffff; letter-spacing:0.5px;">● VERIFIED COMPANY RESEARCH</span>
+            <span style="font-size:11px; color:#a1a1aa; margin-left:12px;">Status: <strong>${data.search_status || 'SUCCESS'}</strong></span>
           </div>
-          <span style="font-size:11px; color:#6ee7b7;">🕒 Retrieved: ${data.retrieval_timestamp || 'LIVE'}</span>
+          <span style="font-size:11px; color:#a1a1aa;">🕒 Retrieved: ${data.retrieval_timestamp || 'LIVE'}</span>
         </div>
       `;
 
@@ -913,8 +970,8 @@ HTML_PAGE = """<!DOCTYPE html>
         <div class="panel-box">
           <div style="display:flex; justify-content:space-between; align-items:flex-start;">
             <div>
-              <h3 style="font-size:20px; font-weight:700;">${data.company_name}</h3>
-              <p style="margin-top:6px; font-size:14px; color:#cbd5e1; line-height:1.5;">${data.company_overview}</p>
+              <h3 style="font-size:20px; font-weight:700; color:#ffffff; letter-spacing:-0.3px;">${data.company_name}</h3>
+              <p style="margin-top:6px; font-size:14px; color:#d4d4d8; line-height:1.5;">${data.company_overview}</p>
             </div>
             <span class="badge ${badgeClass}">${badgeText}</span>
           </div>
@@ -932,11 +989,11 @@ HTML_PAGE = """<!DOCTYPE html>
         data.recent_announcements.forEach(a => {
           html += `
             <li style="margin-bottom:8px;">
-              <strong>${a.title}</strong><br>
-              <span style="color:#94a3b8;">${a.snippet || ''}</span><br>
+              <strong style="color:#ffffff;">${a.title}</strong><br>
+              <span style="color:#a1a1aa;">${a.snippet || ''}</span><br>
               <div style="margin-top:2px; font-size:11px; display:flex; gap:12px;">
                 ${a.url ? `<a href="${a.url}" target="_blank" class="source-link">🔗 Source: ${a.url}</a>` : ''}
-                <span style="color:#64748b;">🕒 ${data.retrieval_timestamp}</span>
+                <span style="color:#71717a;">🕒 ${data.retrieval_timestamp}</span>
               </div>
             </li>
           `;
@@ -952,32 +1009,32 @@ HTML_PAGE = """<!DOCTYPE html>
       `;
 
       if (!data.prospects || !data.prospects.length) {
-        html += `<div style="background:#0b1120; border:1px solid #ef4444; color:#f87171; padding:12px; border-radius:8px;"><strong>Prospects: NOT FOUND</strong> (No verified executive names discovered in public snippets)</div>`;
+        html += `<div style="background:#121214; border:1px solid #525252; color:#ffffff; padding:12px; border-radius:8px;"><strong>Prospects: NOT FOUND</strong> (No verified executive names discovered in public snippets)</div>`;
       } else {
         data.prospects.forEach((p, idx) => {
           let roleDisplay = '';
           if (p.verification_status === 'ROLE_NOT_VERIFIED' || p.designation === 'Role not verified') {
-            roleDisplay = `<span style="color:#f87171; font-weight:600;">• Role not verified</span> <span class="badge" style="background:#7f1d1d; color:#fca5a5; font-size:10px;">ROLE NOT VERIFIED</span>`;
+            roleDisplay = `<span style="color:#a1a1aa; font-weight:600;">• Role not verified</span> <span class="badge" style="background:#18181b; color:#a1a1aa; border:1px solid #3f3f46; font-size:10px;">ROLE NOT VERIFIED</span>`;
           } else if (p.verification_status === 'CONFLICTING_SOURCES' || (p.designation && p.designation.includes('Conflicting sources'))) {
-            roleDisplay = `<span style="color:#fbbf24; font-weight:600;">• Conflicting sources – manual verification required</span> <span class="badge" style="background:#78350f; color:#fde68a; font-size:10px;">CONFLICTING SOURCES</span>`;
+            roleDisplay = `<span style="color:#ffffff; font-weight:600;">• Conflicting sources – manual verification required</span> <span class="badge" style="background:#18181b; color:#ffffff; border:1px solid #52525b; font-size:10px;">CONFLICTING SOURCES</span>`;
           } else {
-            roleDisplay = `<span style="color:var(--primary); font-size:13px; font-weight:600;">• ${p.designation}</span> <span class="badge" style="background:#065f46; color:#34d399; font-size:10px;">VERIFIED</span>`;
+            roleDisplay = `<span style="color:#ffffff; font-size:13px; font-weight:600;">• ${p.designation}</span> <span class="badge" style="background:#ffffff; color:#000000; font-weight:700; font-size:10px;">VERIFIED</span>`;
           }
 
           html += `
             <div class="prospect-card">
               <div style="flex:1;">
                 <div style="display:flex; align-items:center; gap:8px;">
-                  <strong style="font-size:15px; color:#fff;">${p.name}</strong>
+                  <strong style="font-size:15px; color:#ffffff;">${p.name}</strong>
                   ${roleDisplay}
                 </div>
-                <div style="font-size:12px; color:#cbd5e1; margin-top:4px;">
+                <div style="font-size:12px; color:#a1a1aa; margin-top:4px;">
                   ${p.professional_relevance || 'Leadership oversight and strategic roadmap'}
                 </div>
                 <div style="margin-top:6px; font-size:12px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
                   ${p.source_url ? `<a href="${p.source_url}" target="_blank" class="source-link">🔗 Source: ${p.source_title || p.source_url}</a>` : ''}
-                  <span style="color:#64748b; font-size:11px;">🕒 ${p.retrieval_timestamp || data.retrieval_timestamp}</span>
-                  <span style="color:#94a3b8; font-size:11px;">Status: ${p.search_status || data.search_status}</span>
+                  <span style="color:#71717a; font-size:11px;">🕒 ${p.retrieval_timestamp || data.retrieval_timestamp}</span>
+                  <span style="color:#a1a1aa; font-size:11px;">Status: ${p.search_status || data.search_status}</span>
                 </div>
               </div>
               <button class="btn-action-sm" onclick="launchDiscoveredProspect(${idx})">⚡ Research Prospect</button>
@@ -1068,9 +1125,9 @@ HTML_PAGE = """<!DOCTYPE html>
       
       const facts = d.facts || [];
       if (!facts.length || (facts.length === 1 && facts[0].fact === 'NOT FOUND')) {
-        dHtml += `<div style="background:#0b1120; border:1px solid #ef4444; color:#f87171; padding:10px 14px; border-radius:6px; margin:8px 0;"><strong>Research Facts:</strong> NOT FOUND (No verified public web context found)</div>`;
+        dHtml += `<div style="background:#121214; border:1px solid #525252; color:#ffffff; padding:10px 14px; border-radius:6px; margin:8px 0;"><strong>Research Facts:</strong> NOT FOUND (No verified public web context found)</div>`;
       } else {
-        dHtml += `<h4 style="margin:14px 0 8px; color:#38bdf8;">Verified Public Facts (DuckDuckGo RAG):</h4><ul style="padding-left:18px;">`;
+        dHtml += `<h4 style="margin:14px 0 8px; color:#ffffff; font-weight:600;">Verified Public Facts (DuckDuckGo RAG):</h4><ul style="padding-left:18px;">`;
         facts.forEach(f => {
           const factText = f.fact || f;
           const url = f.source_url || '';
@@ -1084,7 +1141,7 @@ HTML_PAGE = """<!DOCTYPE html>
       }
 
       if (d.tailored_hooks && d.tailored_hooks.length && d.tailored_hooks[0] !== 'NOT FOUND') {
-        dHtml += `<h4 style="margin:14px 0 6px; color:#38bdf8;">Tailored Outreach Angles:</h4><ul style="padding-left:18px;">`;
+        dHtml += `<h4 style="margin:14px 0 6px; color:#ffffff; font-weight:600;">Tailored Outreach Angles:</h4><ul style="padding-left:18px;">`;
         d.tailored_hooks.forEach(h => dHtml += `<li>${h}</li>`);
         dHtml += `</ul>`;
       }
@@ -1099,7 +1156,7 @@ HTML_PAGE = """<!DOCTYPE html>
         touches.forEach(t => {
           const isAwaiting = t.status === 'AWAITING_APPROVAL';
           tHtml += `
-            <div style="background:#0b1120; border:1px solid ${isAwaiting ? '#f59e0b' : 'var(--card-border)'}; border-radius:8px; padding:16px; margin-bottom:14px;">
+            <div style="background:#0a0a0a; border:1px solid ${isAwaiting ? '#ffffff' : 'var(--card-border)'}; border-radius:8px; padding:16px; margin-bottom:14px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <span style="font-weight:700; color:var(--primary);">Touch #${t.touch_number} [${t.channel.toUpperCase()}]</span>
                 <div style="display:flex; align-items:center; gap:10px;">
@@ -1110,9 +1167,9 @@ HTML_PAGE = """<!DOCTYPE html>
                 </div>
               </div>
               ${t.subject ? `<div style="font-weight:600; margin-bottom:8px;">Subject: ${t.subject}</div>` : ''}
-              <div style="white-space:pre-wrap; font-size:13px; color:#cbd5e1; background:#1e293b; padding:12px; border-radius:6px; line-height:1.5;">${t.content}</div>
+              <div style="white-space:pre-wrap; font-size:13px; color:#ededed; background:#121214; border:1px solid #262626; padding:12px; border-radius:6px; line-height:1.5;">${t.content}</div>
               <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
-                Evidence used: <span style="color:#fbbf24;">${t.researched_evidence_used || 'Standard product messaging'}</span>
+                Evidence used: <span style="color:#ffffff; font-weight:600;">${t.researched_evidence_used || 'Standard product messaging'}</span>
               </div>
             </div>
           `;
@@ -1127,7 +1184,7 @@ HTML_PAGE = """<!DOCTYPE html>
       } else {
         replies.forEach(r => {
           rHtml += `
-            <div style="background:#0b1120; border:1px solid var(--card-border); border-radius:8px; padding:14px; margin-bottom:10px;">
+            <div style="background:#0a0a0a; border:1px solid var(--card-border); border-radius:8px; padding:14px; margin-bottom:10px;">
               <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
                 <span style="font-weight:700;">Inbound Reply to Touch #${r.in_response_to_touch}</span>
                 <span class="badge badge-ESCALATED">${r.classification} (${Math.round((r.confidence || 0.85)*100)}%)</span>
@@ -1163,8 +1220,8 @@ HTML_PAGE = """<!DOCTYPE html>
         tr.innerHTML = `
           <td style="color:var(--text-muted);">${(l.timestamp || '').slice(0, 19).replace('T', ' ')}</td>
           <td>${l.lead_id ? '#' + l.lead_id : '-'}</td>
-          <td><span style="color:var(--primary); font-weight:600;">${l.stage}</span></td>
-          <td><strong style="color:#fbbf24;">${l.decision}</strong></td>
+          <td><span style="color:#ffffff; font-weight:600;">${l.stage}</span></td>
+          <td><strong style="color:#ffffff;">${l.decision}</strong></td>
           <td class="reasoning-cell">${l.reasoning}</td>
         `;
         tbody.appendChild(tr);
@@ -1465,7 +1522,7 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                     f"✅ <strong>Researched {p_name} at {p_comp} (Lead #{res['lead_id']})</strong><br><br>"
                     f"<strong>Touch #1 Drafted (Status: Draft - Awaiting Approval):</strong><br>"
                     f"<em>Subject:</em> {res['first_touch'].get('subject')}<br>"
-                    f"<pre style='background:#1e293b; padding:10px; border-radius:6px; margin:8px 0; white-space:pre-wrap;'>{res['first_touch'].get('content')}</pre>"
+                    f"<pre style='background:#121214; border:1px solid #262626; color:#ededed; padding:12px; border-radius:6px; margin:8px 0; white-space:pre-wrap;'>{res['first_touch'].get('content')}</pre>"
                     f"<small style='color:var(--text-muted);'>Evidence: {res['first_touch'].get('researched_evidence_used')}</small><br><br>"
                     f"👉 <em>Go to 'RAG Dossier & Sequence' tab to review and click 'Approve & Send'.</em>"
                 )
@@ -1482,10 +1539,10 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                 if disc.get("status") == "SEARCH_FAILED":
                     reply_text = (
                         f"🏢 <strong>Company Discovery: {company_target}</strong><br><br>"
-                        f"<div style='background:#450a0a; border:2px solid #ef4444; color:#fca5a5; padding:12px; border-radius:6px; margin:8px 0;'>"
-                        f"<strong>🔴 Search Status: Connection Timed Out</strong><br>"
+                        f"<div style='background:#121214; border:1px solid #525252; color:#ffffff; padding:14px; border-radius:6px; margin:8px 0;'>"
+                        f"<strong>Search Status: Connection Timed Out</strong><br>"
                         f"{disc.get('search_error') or 'DuckDuckGo search connection timed out.'}<br><br>"
-                        f"<div style='background:#0f172a; border:1px solid #334155; padding:8px; border-radius:4px; font-size:12px; color:#cbd5e1;'>"
+                        f"<div style='background:#000000; border:1px solid #262626; padding:8px; border-radius:4px; font-size:12px; color:#a1a1aa;'>"
                         f"🛡️ <strong>Anti-Hallucination Policy:</strong> Zero artificial or unverified employee names were generated."
                         f"</div>"
                         f"</div>"
@@ -1498,15 +1555,15 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                         f"🏢 <strong>Company Discovery: {company_target}</strong><br><br>"
                         f"{overview_html}"
                         f"<strong>Status: NOT FOUND</strong><br>"
-                        f"<p style='color:#f87171;'>{disc.get('search_warning') or 'Search returned 0 verified leadership results for this company. Zero employee names were invented.'}</p>"
+                        f"<p style='color:#a1a1aa;'>{disc.get('search_warning') or 'Search returned 0 verified leadership results for this company. Zero employee names were invented.'}</p>"
                     )
                 else:
                     if disc.get("data_source") == "LIVE_SEARCH":
-                        header_badge = "<span class='badge' style='background:#065f46; color:#34d399; border:1px solid #10b981;'>LIVE SEARCH • VERIFIED RESEARCH</span>"
+                        header_badge = "<span class='badge' style='background:#ffffff; color:#000000; font-weight:700;'>LIVE SEARCH • VERIFIED RESEARCH</span>"
                     elif disc.get("is_demo_mode") or disc.get("data_source") in ["DEMO_DATA", "DEMO_MODE"]:
-                        header_badge = "<span class='badge' style='background:#1e3a8a; color:#93c5fd; border:1px solid #3b82f6;'>DEMO MODE • VERIFIED RESEARCH</span>"
+                        header_badge = "<span class='badge' style='background:#18181b; color:#ffffff; border:1px solid #52525b;'>DEMO MODE • VERIFIED RESEARCH</span>"
                     else:
-                        header_badge = "<span class='badge' style='background:#065f46; color:#34d399; border:1px solid #10b981;'>VERIFIED RESEARCH</span>"
+                        header_badge = "<span class='badge' style='background:#ffffff; color:#000000; font-weight:700;'>VERIFIED RESEARCH</span>"
 
                     reply_text = (
                         f"🏢 <strong>Company Discovery: {disc['company_name']}</strong> {header_badge}<br><br>"
@@ -1522,19 +1579,19 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                         v_status = p.get("verification_status", "UNVERIFIED")
                         p_desig = p.get("designation", "")
                         if v_status == "ROLE_NOT_VERIFIED" or p_desig == "Role not verified":
-                            role_html = "<span style='color:#f87171; font-weight:600;'>Role not verified</span> <span class='badge' style='background:#7f1d1d; color:#fca5a5; font-size:10px;'>ROLE NOT VERIFIED</span>"
+                            role_html = "<span style='color:#a1a1aa; font-weight:600;'>Role not verified</span> <span class='badge' style='background:#18181b; color:#a1a1aa; border:1px solid #333; font-size:10px;'>ROLE NOT VERIFIED</span>"
                         elif v_status == "CONFLICTING_SOURCES" or "Conflicting sources" in p_desig:
-                            role_html = "<span style='color:#fbbf24; font-weight:600;'>Conflicting sources – manual verification required</span> <span class='badge' style='background:#78350f; color:#fde68a; font-size:10px;'>CONFLICTING SOURCES</span>"
+                            role_html = "<span style='color:#ffffff; font-weight:600;'>Conflicting sources – manual verification required</span> <span class='badge' style='background:#18181b; color:#ffffff; border:1px solid #52525b; font-size:10px;'>CONFLICTING SOURCES</span>"
                         else:
-                            role_html = f"<span style='color:#38bdf8; font-weight:600;'>{p_desig}</span> <span class='badge' style='background:#065f46; color:#34d399; font-size:10px;'>VERIFIED</span>"
+                            role_html = f"<span style='color:#ffffff; font-weight:600;'>{p_desig}</span> <span class='badge' style='background:#ffffff; color:#000000; font-weight:700; font-size:10px;'>VERIFIED</span>"
 
                         reply_text += (
-                            f"<div style='background:#0b1120; border:1px solid #334155; padding:10px; border-radius:6px; margin:6px 0;'>"
-                            f"<strong>{p['name']}</strong> — {role_html}<br>"
-                            f"<small style='color:#94a3b8;'>{p.get('professional_relevance', '')}</small><br>"
-                            f"<a href='{p.get('source_url', '#')}' target='_blank' style='color:#38bdf8; font-size:12px;'>🔗 Source: {p.get('source_title', p.get('source_url', 'Verified Source'))}</a><br>"
-                            f"<small style='color:#64748b;'>🕒 Retrieved: {p.get('retrieval_timestamp', disc.get('retrieval_timestamp', 'N/A'))} | Status: {p.get('search_status', disc.get('search_status', 'SUCCESS'))}</small><br>"
-                            f"<button onclick=\"launchProspectFromChat('{safe_name}', '{safe_comp}', '{safe_desig}', '{safe_url}')\" class='btn-primary' style='margin-top:8px; font-size:11px; padding:4px 10px; cursor:pointer;'>⚡ Research {p['name']}</button>"
+                            f"<div style='background:#0a0a0a; border:1px solid #262626; padding:14px; border-radius:6px; margin:8px 0;'>"
+                            f"<strong style='color:#ffffff; font-size:15px;'>{p['name']}</strong> — {role_html}<br>"
+                            f"<small style='color:#a1a1aa;'>{p.get('professional_relevance', '')}</small><br>"
+                            f"<a href='{p.get('source_url', '#')}' target='_blank' style='color:#ffffff; text-decoration:underline; font-size:12px;'>🔗 Source: {p.get('source_title', p.get('source_url', 'Verified Source'))}</a><br>"
+                            f"<small style='color:#71717a;'>🕒 Retrieved: {p.get('retrieval_timestamp', disc.get('retrieval_timestamp', 'N/A'))} | Status: {p.get('search_status', disc.get('search_status', 'SUCCESS'))}</small><br>"
+                            f"<button onclick=\"launchProspectFromChat('{safe_name}', '{safe_comp}', '{safe_desig}', '{safe_url}')\" class='btn-action-sm' style='margin-top:8px;'>⚡ Research {p['name']}</button>"
                             f"</div>"
                         )
 
@@ -1572,6 +1629,7 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 def start_server(port: int = 8000):
+    socketserver.TCPServer.allow_reuse_address = True
     server = socketserver.TCPServer(("", port), AgentWebHandler)
     print(f"🚀 Sales Outreach Agent Web UI running at http://localhost:{port}")
     server.serve_forever()
