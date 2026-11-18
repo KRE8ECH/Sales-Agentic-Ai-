@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DB_ID, DB_MODE, getDb } from "@/lib/db";
+import { DB_MODE, getDb } from "@/lib/db";
 import { llmStatus } from "@/lib/llm";
 import { getSimNow, listLeads } from "@/lib/repo";
 import { BOOT_ID } from "@/lib/boot";
@@ -12,7 +12,6 @@ export async function GET() {
     (db.prepare(`SELECT COUNT(*) AS c FROM ${t}`).get() as { c: number }).c;
   return NextResponse.json({
     instance: BOOT_ID,
-    dbId: DB_ID,
     dbMode: DB_MODE,
     llm: llmStatus(),
     simNow: getSimNow(),

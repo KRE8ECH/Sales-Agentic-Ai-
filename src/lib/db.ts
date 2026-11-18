@@ -8,8 +8,6 @@ export const DB_PATH = path.join(DATA_DIR, "cadence.sqlite");
 
 let db: DatabaseSync | null = null;
 
-/** Fingerprint of this module instance's database handle (diagnoses per-route module duplication). */
-export const DB_ID = crypto.randomUUID();
 
 /**
  * Local runs use a real SQLite file. Serverless (Vercel) has no writable
