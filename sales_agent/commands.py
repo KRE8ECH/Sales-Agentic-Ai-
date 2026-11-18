@@ -44,20 +44,38 @@ def parse_user_command(raw_input: str) -> Dict[str, Any]:
                 "original": raw_input
             }
 
-    # Pattern 2: Company-Only Discovery
-    # e.g., "Research NVIDIA", "Research Google", "Discover Microsoft", "Find leads in Infosys"
+    # Pattern 2: Explicit Demo Company: "Demo NVIDIA", "Demo Google", "Demo company Infosys"
+    demo_match = re.search(
+        r"^(?:demo|offline)\s+(?:company\s+)?([A-Za-z0-9\s\.\&\-]+)$",
+        cleaned,
+        re.IGNORECASE
+    )
+    if demo_match:
+        comp = demo_match.group(1).strip()
+        if comp.lower() not in ["lead", "leads", "founder", "hr", "cto"]:
+            return {
+                "type": "company_discovery",
+                "company": comp,
+                "mode": "demo",
+                "original": raw_input
+            }
+
+    # Pattern 3: Company-Only Discovery: "Research NVIDIA", "Discover Google", "Explore Infosys"
     comp_match = re.search(
-        r"^(?:please\s+|can\s+you\s+)?(?:research|discover|explore|find\s+leads\s+in|lookup|search|company[:\s]+)\s+([A-Za-z0-9\s\.\&\-]+)$",
+        r"^(?:please\s+|can\s+you\s+)?(?:research|discover|explore|find\s+leads\s+in|lookup|search|company[:\s]+)\s+([A-Za-z0-9\s\.\&\-\(\)]+)$",
         cleaned,
         re.IGNORECASE
     )
     if comp_match:
-        company = comp_match.group(1).strip()
+        raw_comp = comp_match.group(1).strip()
+        is_demo = "(demo)" in raw_comp.lower() or " demo" in raw_comp.lower()
+        company = re.sub(r"\(demo\)|demo", "", raw_comp, flags=re.IGNORECASE).strip()
         # Exclude reserved assistant navigation keywords
         if company.lower() not in ["help", "hello", "hi", "hey", "demo", "status", "settings", "leads", "touches", "logs"]:
             return {
                 "type": "company_discovery",
                 "company": company,
+                "mode": "demo" if is_demo else "live",
                 "original": raw_input
             }
 

@@ -553,13 +553,20 @@ HTML_PAGE = """<!DOCTYPE html>
 
         <div class="panel-box" style="margin-bottom:20px;">
           <div style="display:flex; gap:12px;">
-            <input type="text" id="discovery-company-input" class="chat-input" placeholder="Enter company name (e.g. NVIDIA, Infosys, Microsoft)..." onkeypress="if(event.key==='Enter') runCompanyDiscovery()">
+            <input type="text" id="discovery-company-input" class="chat-input" placeholder="Enter company name (e.g. NVIDIA, Google, Microsoft, Infosys)..." onkeypress="if(event.key==='Enter') runCompanyDiscovery()">
             <button class="btn-primary" onclick="runCompanyDiscovery()">🔍 Discover Prospects</button>
           </div>
-          <div style="margin-top:10px; font-size:12px; color:var(--text-muted); display:flex; gap:16px;">
-            <span>Try: <a href="javascript:void(0)" onclick="setDiscoveryInput('NVIDIA')" style="color:var(--primary)">NVIDIA</a></span>
-            <span><a href="javascript:void(0)" onclick="setDiscoveryInput('Microsoft')" style="color:var(--primary)">Microsoft</a></span>
-            <span><a href="javascript:void(0)" onclick="setDiscoveryInput('Infosys')" style="color:var(--primary)">Infosys</a></span>
+          <div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div style="font-size:12px; color:var(--text-muted); display:flex; gap:12px; align-items:center;">
+              <span>Quick Presets:</span>
+              <a href="javascript:void(0)" onclick="setDiscoveryInput('NVIDIA', false)" style="color:var(--primary)">NVIDIA (Live)</a>
+              <a href="javascript:void(0)" onclick="setDiscoveryInput('Google', false)" style="color:var(--primary)">Google (Live)</a>
+              <a href="javascript:void(0)" onclick="setDiscoveryInput('Microsoft', false)" style="color:var(--primary)">Microsoft (Live)</a>
+              <a href="javascript:void(0)" onclick="setDiscoveryInput('Infosys', false)" style="color:var(--primary)">Infosys (Live)</a>
+            </div>
+            <label style="font-size:12px; color:#fde68a; display:flex; align-items:center; gap:6px; cursor:pointer; background:#451a03; border:1px solid #d97706; padding:6px 12px; border-radius:6px;">
+              <input type="checkbox" id="discovery-demo-mode"> <strong>⚡ Demo Mode (Offline Reference Data)</strong>
+            </label>
           </div>
         </div>
 
@@ -809,13 +816,27 @@ HTML_PAGE = """<!DOCTYPE html>
       selectLead(data.lead_id);
     }
 
+    function setDiscoveryInput(company, isDemo = false) {
+      document.getElementById('discovery-company-input').value = company;
+      document.getElementById('discovery-demo-mode').checked = isDemo;
+      runCompanyDiscovery();
+    }
+
     async function runCompanyDiscovery() {
       const input = document.getElementById('discovery-company-input');
       const company = input.value.trim();
       if (!company) { alert('Please enter a company name.'); return; }
+      const isDemo = document.getElementById('discovery-demo-mode').checked;
+      const mode = isDemo ? 'demo' : 'live';
 
       const progressBox = document.getElementById('discovery-progress');
       const resultsBox = document.getElementById('discovery-results');
+      const stageText = document.getElementById('discovery-stage-text');
+      const substageText = document.getElementById('discovery-substage-text');
+      
+      stageText.innerText = isDemo ? 'Loading Offline Demo Reference Data...' : 'Agent Researching Company via DuckDuckGo...';
+      substageText.innerText = isDemo ? 'Loading verified preconfigured offline leadership profiles' : '1. Querying DuckDuckGo -> 2. Verifying Current Designations -> 3. Anti-Hallucination Gate';
+
       progressBox.style.display = 'block';
       resultsBox.style.display = 'none';
 
@@ -823,7 +844,7 @@ HTML_PAGE = """<!DOCTYPE html>
         const res = await fetch('/api/discover', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ company })
+          body: JSON.stringify({ company, mode })
         });
         const data = await res.json();
         progressBox.style.display = 'none';
@@ -841,21 +862,72 @@ HTML_PAGE = """<!DOCTYPE html>
       box.style.display = 'block';
       box.innerHTML = '';
 
-      if (data.status === 'NOT_FOUND' || (data.company_overview === 'NOT FOUND' && (!data.prospects || !data.prospects.length))) {
+      // Scenario 1: Live Search Failed (Requirement 6: Never silently substitute demo data)
+      if (data.status === 'SEARCH_FAILED') {
         box.innerHTML = `
-          <div class="error-box">
-            <strong>❌ NOT FOUND:</strong> ${data.search_warning || 'DuckDuckGo search could not verify public leadership or company overview for this company.'}
-            <br><small style="color:#cbd5e1;">Zero employee names were invented.</small>
+          <div style="background:#1e1b4b; border:2px solid #ef4444; border-radius:8px; padding:16px; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong style="font-size:16px; color:#f87171;">🔴 Live Search Failed</strong>
+              <span class="badge" style="background:#7f1d1d; color:#fca5a5;">SEARCH STATUS: FAILED</span>
+            </div>
+            <p style="margin-top:8px; color:#fca5a5; font-size:13px;">${data.search_error || 'DuckDuckGo search connection timed out or failed to reach search service.'}</p>
+            <div style="margin-top:10px; padding:10px; background:#0f172a; border-radius:6px; border:1px solid #334155; font-size:12px; color:#94a3b8;">
+              🛡️ <strong>Anti-Hallucination Policy:</strong> Offline demo data was <em>not</em> substituted so that search failures are transparent. You can explicitly run in <strong>Offline Demo Mode</strong> if you wish to inspect reference profiles.
+            </div>
+            <div style="margin-top:12px; display:flex; gap:12px; align-items:center;">
+              <button onclick="document.getElementById('discovery-demo-mode').checked = true; runCompanyDiscovery();" class="btn-primary" style="font-size:12px; padding:6px 12px; cursor:pointer;">⚡ Retry with Offline Demo Mode</button>
+              <span style="font-size:11px; color:#64748b;">Timestamp: ${data.retrieval_timestamp || 'LIVE'}</span>
+            </div>
           </div>
         `;
         return;
       }
 
-      const isLive = data.data_source === 'LIVE_SEARCH';
-      const badgeClass = isLive ? 'badge-LIVE' : 'badge-DEMO';
-      const badgeText = isLive ? 'LIVE SEARCH' : 'DEMO DATA - OFFLINE VERIFIED';
+      // Scenario 2: Not Found
+      if (data.status === 'NOT_FOUND' || (data.company_overview === 'NOT FOUND' && (!data.prospects || !data.prospects.length))) {
+        box.innerHTML = `
+          <div class="error-box">
+            <strong>❌ NOT FOUND:</strong> ${data.search_warning || 'DuckDuckGo search could not verify public leadership or company overview for this company.'}
+            <br><small style="color:#cbd5e1;">Zero employee names were invented. Offline demo data was not substituted.</small>
+            <br><small style="color:#64748b;">Search Status: ${data.search_status} | Timestamp: ${data.retrieval_timestamp}</small>
+          </div>
+        `;
+        return;
+      }
 
-      let html = `
+      const isDemo = data.is_demo_mode === true || data.data_source === 'OFFLINE_DEMO_DATA';
+      let html = '';
+
+      // Prominent Demo Mode Indicator (Requirement 7)
+      if (isDemo) {
+        html += `
+          <div style="background:#451a03; border:2px solid #f59e0b; color:#fbbf24; padding:14px; border-radius:8px; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong style="font-size:15px;">⚠️ DEMO MODE: PRECONFIGURED OFFLINE REFERENCE DATA</strong>
+              <span class="badge" style="background:#78350f; color:#fde68a;">OFFLINE REFERENCE</span>
+            </div>
+            <div style="margin-top:6px; font-size:12px; color:#fef3c7;">
+              Notice: This profile is loaded from verified static offline reference data for testing. It is <strong>NOT</strong> live web research.
+            </div>
+          </div>
+        `;
+      } else {
+        // Live Search Header (Requirement 3: Search status, Retrieval timestamp)
+        html += `
+          <div style="background:#064e3b; border:1px solid #059669; color:#a7f3d0; padding:10px 14px; border-radius:8px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span style="font-weight:700; color:#34d399;">🟢 LIVE WEB RESEARCH (DuckDuckGo)</span>
+              <span style="font-size:11px; color:#a7f3d0; margin-left:12px;">Search Status: <strong>${data.search_status || 'SUCCESS'}</strong></span>
+            </div>
+            <span style="font-size:11px; color:#6ee7b7;">🕒 Retrieved: ${data.retrieval_timestamp || 'LIVE'}</span>
+          </div>
+        `;
+      }
+
+      const badgeClass = isDemo ? 'badge-DEMO' : 'badge-LIVE';
+      const badgeText = isDemo ? 'DEMO MODE - OFFLINE REFERENCE' : 'LIVE SEARCH: SUCCESS';
+
+      html += `
         <div class="panel-box">
           <div style="display:flex; justify-content:space-between; align-items:flex-start;">
             <div>
@@ -880,7 +952,10 @@ HTML_PAGE = """<!DOCTYPE html>
             <li style="margin-bottom:8px;">
               <strong>${a.title}</strong><br>
               <span style="color:#94a3b8;">${a.snippet || ''}</span><br>
-              ${a.url ? `<a href="${a.url}" target="_blank" class="source-link">🔗 Source: ${a.url}</a>` : ''}
+              <div style="margin-top:2px; font-size:11px; display:flex; gap:12px;">
+                ${a.url ? `<a href="${a.url}" target="_blank" class="source-link">🔗 Source: ${a.url}</a>` : ''}
+                <span style="color:#64748b;">🕒 ${data.retrieval_timestamp}</span>
+              </div>
             </li>
           `;
         });
@@ -890,25 +965,38 @@ HTML_PAGE = """<!DOCTYPE html>
       // Discovered Prospects Section
       html += `
         <div class="panel-box">
-          <div class="panel-title">👥 Publicly Verified Decision-Makers (Up to 3)</div>
-          <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">Select any decision-maker below to launch personalized research and draft Touch #1 (held for approval).</p>
+          <div class="panel-title">👥 Public Decision-Makers & Designation Verification (Up to 3)</div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">Every prospect is cross-checked against public sources. If their designation cannot be verified, it is explicitly shown as "Role not verified".</p>
       `;
 
       if (!data.prospects || !data.prospects.length) {
         html += `<div style="background:#0b1120; border:1px solid #ef4444; color:#f87171; padding:12px; border-radius:8px;"><strong>Prospects: NOT FOUND</strong> (No verified executive names discovered in public snippets)</div>`;
       } else {
         data.prospects.forEach((p, idx) => {
+          let roleDisplay = '';
+          if (p.verification_status === 'ROLE_NOT_VERIFIED') {
+            roleDisplay = `<span style="color:#f87171; font-weight:600;">• Role not verified</span> <span class="badge" style="background:#7f1d1d; color:#fca5a5; font-size:10px;">ROLE NOT VERIFIED</span>`;
+          } else if (p.verification_status === 'VERIFIED') {
+            roleDisplay = `<span style="color:var(--primary); font-size:13px; font-weight:600;">• ${p.designation}</span> <span class="badge" style="background:#065f46; color:#34d399; font-size:10px;">VERIFIED</span>`;
+          } else {
+            roleDisplay = `<span style="color:#c084fc; font-size:13px; font-weight:600;">• ${p.designation}</span> <span class="badge" style="background:#581c87; color:#d8b4fe; font-size:10px;">OFFLINE REFERENCE</span>`;
+          }
+
           html += `
             <div class="prospect-card">
               <div style="flex:1;">
                 <div style="display:flex; align-items:center; gap:8px;">
                   <strong style="font-size:15px; color:#fff;">${p.name}</strong>
-                  <span style="color:var(--primary); font-size:13px; font-weight:600;">• ${p.designation}</span>
+                  ${roleDisplay}
                 </div>
                 <div style="font-size:12px; color:#cbd5e1; margin-top:4px;">
                   ${p.professional_relevance || 'Leadership oversight and strategic roadmap'}
                 </div>
-                ${p.source_url ? `<a href="${p.source_url}" target="_blank" class="source-link">🔗 Verified Source: ${p.source_title || p.source_url}</a>` : ''}
+                <div style="margin-top:6px; font-size:12px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+                  ${p.source_url ? `<a href="${p.source_url}" target="_blank" class="source-link">🔗 Source: ${p.source_title || p.source_url}</a>` : ''}
+                  <span style="color:#64748b; font-size:11px;">🕒 ${p.retrieval_timestamp || data.retrieval_timestamp}</span>
+                  <span style="color:#94a3b8; font-size:11px;">Status: ${p.search_status || data.search_status}</span>
+                </div>
               </div>
               <button class="btn-action-sm" onclick="launchDiscoveredProspect(${idx})">⚡ Research Prospect</button>
             </div>
@@ -1315,7 +1403,8 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
 
         elif path == "/api/discover":
             company = payload.get("company", "").strip()
-            discovery_res = orchestrator.discover_company(company)
+            mode = payload.get("mode", "live")
+            discovery_res = orchestrator.discover_company(company, mode=mode)
             self.send_json(discovery_res)
             return
 
@@ -1404,18 +1493,49 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
             # Command 2: Company-only search: "Research [Company]" (e.g. "Research NVIDIA", "Research Google")
             elif parsed["type"] == "company_discovery":
                 company_target = parsed["company"]
-                disc = orchestrator.discover_company(company_target)
-                if disc.get("status") == "NOT_FOUND" or not disc.get("prospects"):
+                mode = parsed.get("mode", "live")
+                disc = orchestrator.discover_company(company_target, mode=mode)
+
+                # Requirement 6: If DuckDuckGo fails, show a search failure message instead of silently substituting demo data.
+                if disc.get("status") == "SEARCH_FAILED":
+                    reply_text = (
+                        f"🏢 <strong>Company Discovery: {company_target}</strong><br><br>"
+                        f"<div style='background:#450a0a; border:2px solid #ef4444; color:#fca5a5; padding:12px; border-radius:6px; margin:8px 0;'>"
+                        f"<strong>🔴 Live Search Status: FAILED</strong><br>"
+                        f"{disc.get('search_error') or 'DuckDuckGo search connection failed.'}<br><br>"
+                        f"<div style='background:#0f172a; border:1px solid #334155; padding:8px; border-radius:4px; font-size:12px; color:#cbd5e1;'>"
+                        f"🛡️ <strong>Anti-Hallucination Gate:</strong> Offline demo data was <em>not</em> substituted so that search failures are transparent.<br>"
+                        f"Type <code>Demo {company_target}</code> or select Demo Mode in the Company Discovery tab to explore offline reference profiles."
+                        f"</div>"
+                        f"</div>"
+                    )
+                elif disc.get("status") == "NOT_FOUND" or not disc.get("prospects"):
                     reply_text = (
                         f"🏢 <strong>Company Discovery: {company_target}</strong><br><br>"
                         f"<strong>Status: NOT FOUND</strong><br>"
                         f"<p style='color:#f87171;'>{disc.get('search_warning') or 'DuckDuckGo search returned 0 verified leadership results for this company. Zero employee names were invented.'}</p>"
                     )
                 else:
-                    is_live = disc.get("data_source") == "LIVE_SEARCH"
-                    badge = f"<span class='badge {'badge-LIVE' if is_live else 'badge-DEMO'}'>{'LIVE SEARCH' if is_live else 'DEMO DATA - OFFLINE VERIFIED'}</span>"
+                    is_demo = disc.get("is_demo_mode", False)
+                    if is_demo:
+                        header_badge = "<span class='badge' style='background:#581c87; color:#d8b4fe;'>OFFLINE DEMO DATA</span>"
+                        demo_banner = (
+                            "<div style='background:#451a03; border:2px solid #f59e0b; color:#fbbf24; padding:10px 14px; border-radius:6px; margin-bottom:12px; font-weight:600; font-size:12px;'>"
+                            "⚠️ DEMO MODE: PRECONFIGURED OFFLINE REFERENCE DATA (NOT LIVE RESEARCH)"
+                            "</div>"
+                        )
+                    else:
+                        header_badge = "<span class='badge' style='background:#065f46; color:#34d399;'>LIVE SEARCH: SUCCESS</span>"
+                        demo_banner = (
+                            f"<div style='background:#064e3b; border:1px solid #059669; color:#a7f3d0; padding:8px 12px; border-radius:6px; margin-bottom:12px; font-size:11px; display:flex; justify-content:space-between; align-items:center;'>"
+                            f"<span>🟢 <strong>LIVE DUCKDUCKGO RESEARCH</strong></span>"
+                            f"<span>🕒 {disc.get('retrieval_timestamp')}</span>"
+                            f"</div>"
+                        )
+
                     reply_text = (
-                        f"🏢 <strong>Company Discovery: {disc['company_name']}</strong> {badge}<br><br>"
+                        f"{demo_banner}"
+                        f"🏢 <strong>Company Discovery: {disc['company_name']}</strong> {header_badge}<br><br>"
                         f"<p>{disc.get('company_overview', '')}</p><br>"
                         f"<strong>Discovered Public Decision-Makers:</strong><br>"
                     )
@@ -1423,13 +1543,22 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                         safe_name = p['name'].replace("'", "\\'")
                         safe_comp = disc['company_name'].replace("'", "\\'")
                         safe_desig = p['designation'].replace("'", "\\'")
-                        safe_url = p['source_url'].replace("'", "\\'")
+                        safe_url = p.get('source_url', '').replace("'", "\\'")
+
+                        v_status = p.get("verification_status", "UNVERIFIED")
+                        if v_status == "ROLE_NOT_VERIFIED":
+                            role_html = "<span style='color:#f87171; font-weight:600;'>Role not verified</span> <span class='badge' style='background:#7f1d1d; color:#fca5a5; font-size:10px;'>ROLE NOT VERIFIED</span>"
+                        elif v_status == "VERIFIED":
+                            role_html = f"<span style='color:#38bdf8; font-weight:600;'>{p['designation']}</span> <span class='badge' style='background:#065f46; color:#34d399; font-size:10px;'>VERIFIED</span>"
+                        else:
+                            role_html = f"<span style='color:#c084fc; font-weight:600;'>{p['designation']}</span> <span class='badge' style='background:#581c87; color:#d8b4fe; font-size:10px;'>OFFLINE REFERENCE</span>"
 
                         reply_text += (
                             f"<div style='background:#0b1120; border:1px solid #334155; padding:10px; border-radius:6px; margin:6px 0;'>"
-                            f"<strong>{p['name']}</strong> — <em>{p['designation']}</em><br>"
+                            f"<strong>{p['name']}</strong> — {role_html}<br>"
                             f"<small style='color:#94a3b8;'>{p.get('professional_relevance', '')}</small><br>"
-                            f"<a href='{p['source_url']}' target='_blank' style='color:#38bdf8; font-size:12px;'>🔗 Source: {p.get('source_title', p['source_url'])}</a><br>"
+                            f"<a href='{p.get('source_url', '#')}' target='_blank' style='color:#38bdf8; font-size:12px;'>🔗 Source: {p.get('source_title', p.get('source_url', 'Verified Source'))}</a><br>"
+                            f"<small style='color:#64748b;'>🕒 Retrieved: {p.get('retrieval_timestamp', disc.get('retrieval_timestamp', 'N/A'))} | Search Status: {p.get('search_status', disc.get('search_status', 'SUCCESS'))}</small><br>"
                             f"<button onclick=\"launchProspectFromChat('{safe_name}', '{safe_comp}', '{safe_desig}', '{safe_url}')\" class='btn-primary' style='margin-top:8px; font-size:11px; padding:4px 10px; cursor:pointer;'>⚡ Research {p['name']}</button>"
                             f"</div>"
                         )

@@ -43,21 +43,25 @@ def main():
     # ---------------------------------------------------------
     print("\n--- Test 1: Parser unit checks ---")
     cmd1 = parse_user_command("Research NVIDIA")
-    assert cmd1["type"] == "company_discovery" and cmd1["company"] == "NVIDIA", f"Failed: {cmd1}"
-    print("✔ 'Research NVIDIA' parsed as company_discovery for 'NVIDIA'")
+    assert cmd1["type"] == "company_discovery" and cmd1["company"] == "NVIDIA" and cmd1["mode"] == "live", f"Failed: {cmd1}"
+    print("✔ 'Research NVIDIA' parsed as company_discovery (mode=live)")
+
+    cmd_demo = parse_user_command("Demo NVIDIA")
+    assert cmd_demo["type"] == "company_discovery" and cmd_demo["company"] == "NVIDIA" and cmd_demo["mode"] == "demo", f"Failed: {cmd_demo}"
+    print("✔ 'Demo NVIDIA' parsed as company_discovery (mode=demo)")
 
     cmd2 = parse_user_command("Research Google")
-    assert cmd2["type"] == "company_discovery" and cmd2["company"] == "Google", f"Failed: {cmd2}"
-    print("✔ 'Research Google' parsed as company_discovery for 'Google'")
+    assert cmd2["type"] == "company_discovery" and cmd2["company"] == "Google" and cmd2["mode"] == "live", f"Failed: {cmd2}"
+    print("✔ 'Research Google' parsed as company_discovery (mode=live)")
 
     cmd3 = parse_user_command("Research Satya Nadella at Microsoft, CEO")
     assert cmd3["type"] == "named_lead" and cmd3["name"] == "Satya Nadella" and cmd3["company"] == "Microsoft" and cmd3["role"] == "CEO", f"Failed: {cmd3}"
     print("✔ 'Research Satya Nadella at Microsoft, CEO' parsed as named_lead")
 
     # ---------------------------------------------------------
-    # Test 2: HTTP /api/chat 'Research NVIDIA' (Company Discovery)
+    # Test 2: HTTP /api/chat 'Research NVIDIA' (Live Search Failure Handling)
     # ---------------------------------------------------------
-    print("\n--- Test 2: End-to-End Chat API with 'Research NVIDIA' ---")
+    print("\n--- Test 2: End-to-End Chat API with 'Research NVIDIA' (Live Search) ---")
     res1 = invoke_chat_post("Research NVIDIA")
     reply1 = res1.get("reply", "")
 
@@ -65,43 +69,50 @@ def main():
     assert OLD_FALLBACK_TEXT not in reply1, "FAIL: Old fallback message was returned for 'Research NVIDIA'!"
     assert "I'm ready to assist! You can tell me" not in reply1, "FAIL: Generic fallback returned!"
 
-    # Must execute company discovery and return NVIDIA prospects with verified source URL
-    assert "Company Discovery: NVIDIA" in reply1, "FAIL: NVIDIA discovery missing from reply!"
-    assert "Jensen Huang" in reply1, "FAIL: Expected 'Jensen Huang' in discovered prospects!"
-    assert "https://www.nvidia.com" in reply1, "FAIL: Expected verified source URL for NVIDIA prospect!"
-    assert "launchProspectFromChat" in reply1, "FAIL: Expected interactive prospect launch button in chat!"
-    print("✔ 'Research NVIDIA' returned verified company discovery results!")
-    print("✔ Verified prospect 'Jensen Huang' (Founder, President & CEO) present.")
-    print("✔ Verified source URL: https://www.nvidia.com/en-us/about-nvidia/corporate-executives/jensen-huang/")
+    # In sandbox without network, live search must show transparent search failure & NOT substitute demo data
+    assert "Live Search Status: FAILED" in reply1 or "LIVE DUCKDUCKGO RESEARCH" in reply1
+    assert "Offline demo data was <em>not</em> substituted" in reply1 or "LIVE DUCKDUCKGO" in reply1
+    print("✔ 'Research NVIDIA' correctly handled live search routing.")
+    print("✔ Transparent failure reported; verified offline demo data was NOT silently substituted.")
     print("✔ Confirmed old fallback text is STRICTLY NOT present in response.")
 
     # ---------------------------------------------------------
-    # Test 3: HTTP /api/chat 'Research Google' (Company Discovery)
+    # Test 3: HTTP /api/chat 'Demo NVIDIA' (Explicit Offline Demo Mode)
     # ---------------------------------------------------------
-    print("\n--- Test 3: End-to-End Chat API with 'Research Google' ---")
-    res2 = invoke_chat_post("Research Google")
+    print("\n--- Test 3: End-to-End Chat API with 'Demo NVIDIA' (Offline Demo Mode) ---")
+    res2 = invoke_chat_post("Demo NVIDIA")
     reply2 = res2.get("reply", "")
 
-    assert OLD_FALLBACK_TEXT not in reply2, "FAIL: Old fallback message was returned for 'Research Google'!"
-    assert "I're ready to assist! You can tell me" not in reply2 and "I'm ready to assist! You can tell me" not in reply2, "FAIL: Generic fallback returned!"
-    assert "Company Discovery: Google" in reply2, "FAIL: Expected Company Discovery header for Google!"
-    assert "Sundar Pichai" in reply2, "FAIL: Expected 'Sundar Pichai' in Google discovery!"
-    assert "https://abc.xyz" in reply2, "FAIL: Expected verified source URL for Sundar Pichai!"
-    print("✔ 'Research Google' returned verified company discovery results!")
-    print("✔ Verified prospect 'Sundar Pichai' (CEO) present.")
-    print("✔ Verified source URL: https://abc.xyz/investor/board-and-management/")
+    assert "DEMO MODE: PRECONFIGURED OFFLINE REFERENCE DATA" in reply2, "FAIL: Expected visible Demo Mode indicator!"
+    assert "NOT LIVE RESEARCH" in reply2, "FAIL: Expected non-live notice in demo indicator!"
+    assert "Jensen Huang" in reply2, "FAIL: Expected Jensen Huang in NVIDIA demo prospects!"
+    assert "https://www.nvidia.com" in reply2, "FAIL: Expected source URL for Jensen Huang!"
+    assert "launchProspectFromChat" in reply2, "FAIL: Expected launch button in chat!"
+    print("✔ 'Demo NVIDIA' activated Demo Mode with visible indicator and verified prospect profiles.")
 
     # ---------------------------------------------------------
-    # Test 4: HTTP /api/chat 'Research Satya Nadella at Microsoft, CEO'
+    # Test 4: HTTP /api/chat 'Demo Google' (Offline Demo Mode)
     # ---------------------------------------------------------
-    print("\n--- Test 4: End-to-End Chat API with 'Research Satya Nadella at Microsoft, CEO' ---")
-    res3 = invoke_chat_post("Research Satya Nadella at Microsoft, CEO")
+    print("\n--- Test 4: End-to-End Chat API with 'Demo Google' ---")
+    res3 = invoke_chat_post("Demo Google")
     reply3 = res3.get("reply", "")
 
-    assert OLD_FALLBACK_TEXT not in reply3, "FAIL: Old fallback message was returned!"
-    assert "Researched Satya Nadella at Microsoft" in reply3, f"FAIL: Expected onboarding confirmation, got: {reply3}"
-    assert "Touch #1 Drafted" in reply3, "FAIL: Expected Touch #1 drafted message!"
-    assert "Draft - Awaiting Approval" in reply3, "FAIL: Status must be Draft - Awaiting Approval!"
+    assert "DEMO MODE: PRECONFIGURED OFFLINE REFERENCE DATA" in reply3
+    assert "Sundar Pichai" in reply3, "FAIL: Expected Sundar Pichai in Google demo prospects!"
+    assert "https://abc.xyz" in reply3, "FAIL: Expected official source link for Sundar Pichai!"
+    print("✔ 'Demo Google' returned Google leadership reference profiles with source links.")
+
+    # ---------------------------------------------------------
+    # Test 5: HTTP /api/chat 'Research Satya Nadella at Microsoft, CEO'
+    # ---------------------------------------------------------
+    print("\n--- Test 5: End-to-End Chat API with 'Research Satya Nadella at Microsoft, CEO' ---")
+    res4 = invoke_chat_post("Research Satya Nadella at Microsoft, CEO")
+    reply4 = res4.get("reply", "")
+
+    assert OLD_FALLBACK_TEXT not in reply4, "FAIL: Old fallback message was returned!"
+    assert "Researched Satya Nadella at Microsoft" in reply4, f"FAIL: Expected onboarding confirmation, got: {reply4}"
+    assert "Touch #1 Drafted" in reply4, "FAIL: Expected Touch #1 drafted message!"
+    assert "Draft - Awaiting Approval" in reply4, "FAIL: Status must be Draft - Awaiting Approval!"
     print("✔ 'Research Satya Nadella at Microsoft, CEO' onboarded lead & drafted Touch #1 held in Awaiting Approval.")
 
     print("\n" + "=" * 70)

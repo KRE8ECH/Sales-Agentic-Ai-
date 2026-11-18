@@ -25,18 +25,18 @@ class OutreachOrchestrator:
         self.decision_engine = DecisionAgent(self.db)
         self.discovery_engine = CompanyDiscoveryEngine(self.ollama)
 
-    def discover_company(self, company_name: str) -> Dict[str, Any]:
+    def discover_company(self, company_name: str, mode: str = "live") -> Dict[str, Any]:
         """Discovers company overview, business activities, and up to 3 verified decision-makers."""
         settings = self.db.get_product_settings()
-        discovery_result = self.discovery_engine.discover(company_name, my_product_settings=settings)
+        discovery_result = self.discovery_engine.discover(company_name, my_product_settings=settings, mode=mode)
 
         # Log decision into audit table
         prospects = discovery_result.get("prospects", [])
         status = discovery_result.get("status", "OK")
         reasoning = (
-            f"Company discovery executed for '{company_name}'. "
-            f"Identified {len(prospects)} verified decision-makers via {discovery_result.get('data_source', 'LIVE_SEARCH')}. "
-            f"{discovery_result.get('search_warning', '')}"
+            f"Company discovery executed for '{company_name}' in mode='{mode}'. "
+            f"Identified {len(prospects)} decision-makers via {discovery_result.get('data_source', 'LIVE_SEARCH')}. "
+            f"{discovery_result.get('search_warning', '') or ''}"
         )
         self.db.log_decision(
             lead_id=0,
@@ -45,7 +45,10 @@ class OutreachOrchestrator:
             reasoning=reasoning.strip(),
             metadata={
                 "company": company_name,
+                "mode": mode,
                 "data_source": discovery_result.get("data_source"),
+                "is_demo_mode": discovery_result.get("is_demo_mode", False),
+                "search_status": discovery_result.get("search_status"),
                 "prospects_count": len(prospects),
                 "status": status
             }

@@ -226,30 +226,61 @@ def handle_demo_lead(orchestrator: OutreachOrchestrator, db: Database):
     console.print(f"[bold green]✔ Demo lead loaded successfully! (Lead ID: #{res['lead_id']})[/bold green]")
     show_lead_details(db, res["lead_id"])
 
-def handle_company_discovery(orchestrator: OutreachOrchestrator, db: Database, company_name: str):
-    console.print(f"\n[bold cyan]🏢 Initiating AI Company Discovery for: '{company_name}'...[/bold cyan]")
+def handle_company_discovery(orchestrator: OutreachOrchestrator, db: Database, company_name: str, mode: str = "live"):
+    mode_label = "Demo Mode" if mode == "demo" else "Live Search"
+    console.print(f"\n[bold cyan]🏢 Initiating AI Company Discovery ({mode_label}) for: '{company_name}'...[/bold cyan]")
     with console.status("[bold green]DuckDuckGo search + RAG leadership extraction in progress..."):
-        disc = orchestrator.discover_company(company_name)
+        disc = orchestrator.discover_company(company_name, mode=mode)
 
+    # 1. Search Failed (Requirement 6: Never silently substitute demo data)
+    if disc.get("status") == "SEARCH_FAILED":
+        console.print(Panel(
+            f"[bold red]🔴 LIVE SEARCH FAILED:[/bold red] {disc.get('search_error')}\n\n"
+            f"[yellow]⚠️ {disc.get('search_warning')}[/yellow]\n"
+            f"[dim]Timestamp:[/dim] {disc.get('retrieval_timestamp')}\n"
+            "[dim]Tip: Enter 'demo <company>' to inspect preconfigured reference profiles.[/dim]",
+            border_style="red",
+            title="Search Status: FAILED"
+        ))
+        return
+
+    # 2. Not Found
     if disc.get("status") == "NOT_FOUND" or (disc.get("company_overview") == "NOT FOUND" and not disc.get("prospects")):
         console.print(Panel(
             f"[bold red]❌ NOT FOUND:[/bold red] {disc.get('search_warning') or 'DuckDuckGo search returned 0 verified leadership results for this company.'}\n"
+            f"[dim]Data Source:[/dim] {disc.get('data_source')} | [dim]Search Status:[/dim] {disc.get('search_status')}\n"
             "[dim]Strict anti-hallucination guarantee: Zero employee names were invented.[/dim]",
             border_style="red",
             title="Discovery Result"
         ))
         return
 
-    is_live = disc.get("data_source") == "LIVE_SEARCH"
-    source_badge = "[bold green][LIVE SEARCH][/bold green]" if is_live else "[bold cyan][DEMO DATA - OFFLINE VERIFIED][/bold cyan]"
+    # 3. Data Source Badging & Demo Mode Indicator
+    is_demo = disc.get("is_demo_mode", False)
+    if is_demo:
+        console.print(Panel(
+            "[bold yellow]⚠️ DEMO MODE: PRECONFIGURED OFFLINE REFERENCE DATA[/bold yellow]\n"
+            "[yellow]Notice: This profile is loaded from offline reference data. It is NOT live web research.[/yellow]",
+            border_style="yellow",
+            title="Demo Mode Active"
+        ))
+        source_badge = "[bold purple][OFFLINE DEMO DATA][/bold purple]"
+    else:
+        source_badge = (
+            f"[bold green][LIVE SEARCH: DUCKDUCKGO][/bold green] "
+            f"([cyan]Status: {disc.get('search_status', 'SUCCESS')}[/cyan] | [dim]Retrieved: {disc.get('retrieval_timestamp')}[/dim])"
+        )
 
     console.print(Panel(
         f"[bold white]Company:[/bold white] {disc['company_name']} {source_badge}\n\n"
         f"[bold]Overview:[/bold] {disc.get('company_overview')}\n\n"
         + (f"[yellow]⚠️ {disc['search_warning']}[/yellow]\n\n" if disc.get("search_warning") else "")
         + "### Recent Public Announcements & Context:\n"
-        + "\n".join([f"- **{a.get('title')}**\n  [Source Link]({a.get('url')})" for a in disc.get("recent_announcements", [])]),
-        title="Company Intelligence (DuckDuckGo RAG)",
+        + "\n".join([
+            f"- **{a.get('title')}**\n  [Source Link]({a.get('url')})\n  [dim]Retrieved: {disc.get('retrieval_timestamp')}[/dim]"
+            for a in disc.get("recent_announcements", [])
+        ]),
+        title="Company Intelligence",
         border_style="cyan"
     ))
 
@@ -258,14 +289,28 @@ def handle_company_discovery(orchestrator: OutreachOrchestrator, db: Database, c
         console.print("[bold red]Prospects: NOT FOUND (No verified executive names discovered in public snippets)[/bold red]")
         return
 
-    console.print("\n[bold]Publicly Verified Decision-Makers:[/bold]")
+    console.print("\n[bold]Discovered Prospects & Designation Verification:[/bold]")
     for idx, p in enumerate(prospects):
+        v_status = p.get("verification_status", "UNVERIFIED")
+        if v_status == "VERIFIED":
+            status_tag = "[bold green][VERIFIED][/bold green]"
+            role_display = f"[bold white]{p['designation']}[/bold white]"
+        elif v_status == "ROLE_NOT_VERIFIED":
+            status_tag = "[bold red][ROLE NOT VERIFIED][/bold red]"
+            role_display = "[bold red]Role not verified[/bold red]"
+        else:
+            status_tag = "[bold purple][OFFLINE REFERENCE][/bold purple]"
+            role_display = f"[white]{p['designation']}[/white]"
+
         console.print(Panel(
-            f"[bold cyan][{idx + 1}] {p['name']}[/bold cyan] • [bold]{p['designation']}[/bold]\n"
-            f"[dim]Relevance:[/dim] {p.get('professional_relevance')}\n"
-            f"[dim]Source URL:[/dim] [yellow]{p.get('source_url')}[/yellow]",
-            title=f"Discovered Prospect #{idx + 1}",
-            border_style="blue"
+            f"[bold cyan][{idx + 1}] {p['name']}[/bold cyan] • {role_display} {status_tag}\n"
+            f"[dim]Search Status:[/dim] {p.get('search_status', disc.get('search_status', 'SUCCESS'))}\n"
+            f"[dim]Source Title:[/dim] {p.get('source_title', 'Public Web Source')}\n"
+            f"[dim]Source URL:[/dim] [yellow]{p.get('source_url')}[/yellow]\n"
+            f"[dim]Retrieved:[/dim] {p.get('retrieval_timestamp', disc.get('retrieval_timestamp', 'N/A'))}\n"
+            f"[dim]Relevance:[/dim] {p.get('professional_relevance')}",
+            title=f"Prospect #{idx + 1} ({v_status})",
+            border_style="green" if v_status == "VERIFIED" else ("yellow" if is_demo else "red")
         ))
 
     choice = Prompt.ask(
@@ -343,7 +388,10 @@ def main():
                 ))
 
             elif action in ["demo", "demolead", "demo-lead"]:
-                handle_demo_lead(orchestrator, db)
+                if arg and arg.lower() not in ["1", "2", "3", "founder", "hr", "cto", "lead"]:
+                    handle_company_discovery(orchestrator, db, arg, mode="demo")
+                else:
+                    handle_demo_lead(orchestrator, db)
 
             elif action in ["settings", "config"]:
                 handle_settings(db)
@@ -395,11 +443,11 @@ def main():
                     console.print(f"[bold green]✔ Lead onboarded and Touch #1 drafted (Awaiting Approval)![/bold green] (Lead ID: {result['lead_id']})")
                     show_lead_details(db, result["lead_id"])
                 elif parsed["type"] == "company_discovery":
-                    handle_company_discovery(orchestrator, db, parsed["company"])
+                    handle_company_discovery(orchestrator, db, parsed["company"], mode=parsed.get("mode", "live"))
                 else:
                     company_name = arg.strip() if arg else Prompt.ask("Enter Company Name to Discover").strip()
                     if company_name:
-                        handle_company_discovery(orchestrator, db, company_name)
+                        handle_company_discovery(orchestrator, db, company_name, mode="live")
                     else:
                         console.print("[yellow]Please specify a company or prospect. Example: 'research NVIDIA' or 'research Satya Nadella at Microsoft, CEO'[/yellow]")
 

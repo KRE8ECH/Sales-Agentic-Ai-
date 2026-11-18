@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from sales_agent.search.duckduckgo import DuckDuckGoSearchTool
 from sales_agent.search.rag_engine import RAGEngine
@@ -7,7 +8,7 @@ from sales_agent.llm.ollama_client import OllamaClient
 
 logger = logging.getLogger(__name__)
 
-# Verified offline leadership knowledge base for reference and demo offline testing
+# Verified offline leadership knowledge base for reference and explicit demo offline testing
 VERIFIED_OFFLINE_COMPANIES = {
     "nvidia": {
         "company_name": "NVIDIA",
@@ -227,25 +228,95 @@ VERIFIED_OFFLINE_COMPANIES = {
     }
 }
 
+VERIFIED_OFFLINE_COMPANIES["alphabet"] = VERIFIED_OFFLINE_COMPANIES["google"]
+
+
 class CompanyDiscoveryEngine:
     """
     AI-powered company and prospect discovery engine:
     1. Researches company overview and public announcements via DuckDuckGo
     2. Identifies up to 3 verifiable decision-makers (CEO, CTO, HR Head, etc.)
     3. Strictly enforces verifiable source URLs (never invents people or titles)
-    4. Distinguishes live search from verified offline demo data
+    4. Clearly separates LIVE SEARCH results from OFFLINE DEMO DATA
+    5. Displays search status, source URL, source title, retrieval timestamp, verification status
+    6. Verifies current designations; displays 'Role not verified' if unverified
+    7. Displays search failure messages if DuckDuckGo fails without silently substituting demo data
+    8. Shows a prominent Demo Mode indicator when offline reference data is used
     """
 
-    def __init__(self, ollama: Optional[OllamaClient] = None):
+    def __init__(self, ollama: Optional[OllamaClient] = None, search_tool: Optional[DuckDuckGoSearchTool] = None):
         self.ollama = ollama or OllamaClient()
-        self.search_tool = DuckDuckGoSearchTool()
+        self.search_tool = search_tool or DuckDuckGoSearchTool()
         self.rag = RAGEngine()
 
-    def discover(self, company_name: str, my_product_settings: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    def discover(
+        self,
+        company_name: str,
+        my_product_settings: Optional[Dict[str, str]] = None,
+        mode: str = "live"
+    ) -> Dict[str, Any]:
+        """
+        Executes company discovery in either 'live' search mode or 'demo' offline mode.
+        """
         company_clean = company_name.strip()
         comp_key = company_clean.lower()
+        retrieval_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-        # Step 1: Attempt Live DuckDuckGo search queries
+        # =========================================================================
+        # CASE 1: OFFLINE DEMO MODE (Explicitly requested by user/setting)
+        # =========================================================================
+        if mode.lower() in ["demo", "offline", "demo_mode"]:
+            matched_offline = None
+            for k, v in VERIFIED_OFFLINE_COMPANIES.items():
+                if k in comp_key or comp_key in k:
+                    matched_offline = v
+                    break
+
+            if matched_offline:
+                result = dict(matched_offline)
+                result["status"] = "OK"
+                result["search_status"] = "OFFLINE_DEMO"
+                result["data_source"] = "OFFLINE_DEMO_DATA"
+                result["is_demo_mode"] = True
+                result["demo_mode_indicator"] = "DEMO MODE — PRECONFIGURED OFFLINE REFERENCE DATA (NOT LIVE WEB RESEARCH)"
+                result["retrieval_timestamp"] = "OFFLINE_PRECONFIGURED"
+                result["search_warning"] = (
+                    f"Notice: Displaying pre-configured offline reference data for {matched_offline['company_name']}. "
+                    "This is NOT live web research."
+                )
+                result["prospects"] = [
+                    {
+                        **p,
+                        "verification_status": "OFFLINE_REFERENCE",
+                        "retrieval_timestamp": "OFFLINE_PRECONFIGURED",
+                        "search_status": "OFFLINE_DEMO"
+                    }
+                    for p in matched_offline.get("prospects", [])
+                ]
+                return result
+
+            # Company not in offline reference catalog
+            return {
+                "status": "NOT_FOUND",
+                "search_status": "OFFLINE_DEMO",
+                "data_source": "OFFLINE_DEMO_DATA",
+                "is_demo_mode": True,
+                "demo_mode_indicator": "DEMO MODE — PRECONFIGURED OFFLINE REFERENCE DATA (NOT LIVE RESEARCH)",
+                "company_name": company_clean,
+                "company_overview": "NOT FOUND",
+                "search_error": f"No offline demo dataset available for '{company_clean}'. Available demo companies: NVIDIA, Google, Microsoft, Infosys.",
+                "search_warning": f"Company '{company_clean}' is not in the offline demo catalog.",
+                "retrieval_timestamp": "OFFLINE_PRECONFIGURED",
+                "sources_retrieved": [],
+                "business_activities": [],
+                "recent_announcements": [],
+                "potential_business_needs": [],
+                "prospects": []
+            }
+
+        # =========================================================================
+        # CASE 2: LIVE SEARCH MODE (Standard DuckDuckGo Search)
+        # =========================================================================
         queries = [
             f"{company_clean} company overview business products",
             f"{company_clean} CEO founder leadership team",
@@ -255,68 +326,165 @@ class CompanyDiscoveryEngine:
 
         live_results = []
         seen_urls = set()
-        search_error = None
+        search_failed = False
+        search_errors = []
 
         try:
             for q in queries:
-                res = self.search_tool.search(q, max_results=3)
-                for item in res:
+                res_obj = self.search_tool.search_with_status(q, max_results=3)
+                if res_obj.get("status") == "FAILED":
+                    search_failed = True
+                    if res_obj.get("error"):
+                        search_errors.append(res_obj["error"])
+                for item in res_obj.get("results", []):
                     url = item.get("url")
                     if url and url not in seen_urls:
                         seen_urls.add(url)
+                        item["retrieval_timestamp"] = retrieval_timestamp
                         live_results.append(item)
         except Exception as e:
-            search_error = str(e)
+            search_failed = True
+            search_errors.append(str(e))
             logger.warning(f"DuckDuckGo search error during discovery for {company_clean}: {e}")
 
-        # Step 2: Check if live search returned relevant results mentioning the company
+        # Requirement 6: If DuckDuckGo fails, show a search failure message instead of silently substituting demo data.
+        if search_failed and len(live_results) == 0:
+            err_details = "; ".join(set(search_errors)) if search_errors else "Network unreachable, rate-limited, or timed out"
+            return {
+                "status": "SEARCH_FAILED",
+                "search_status": "FAILED",
+                "data_source": "LIVE_SEARCH",
+                "is_demo_mode": False,
+                "company_name": company_clean,
+                "company_overview": "Search Failed",
+                "search_error": f"DuckDuckGo search failed to retrieve live results: {err_details}",
+                "search_warning": (
+                    "DuckDuckGo live web search failed. Offline demo data was NOT substituted to maintain research authenticity. "
+                    "You may switch to Demo Mode in the interface to explore with pre-configured reference profiles."
+                ),
+                "retrieval_timestamp": retrieval_timestamp,
+                "sources_retrieved": [],
+                "business_activities": [],
+                "recent_announcements": [],
+                "potential_business_needs": [],
+                "prospects": []
+            }
+
+        # Filter relevant chunks mentioning the company name
         relevant_chunks = []
         for item in live_results:
             text = f"{item.get('title', '')}. {item.get('snippet', '')}".lower()
             if comp_key in text:
                 relevant_chunks.append(item)
 
-        # If live search succeeded and found verified company context
-        if len(relevant_chunks) >= 2:
-            live_result = self._synthesize_live_discovery(company_clean, relevant_chunks, my_product_settings)
-            # If live search returned verified prospects, return immediately
-            if live_result.get("prospects"):
-                return live_result
+        # If live search returned results, but 0 relevant chunks for this company
+        if not relevant_chunks:
+            return {
+                "status": "NOT_FOUND",
+                "search_status": "NO_RESULTS",
+                "data_source": "LIVE_SEARCH",
+                "is_demo_mode": False,
+                "company_name": company_clean,
+                "company_overview": "NOT FOUND",
+                "search_error": "DuckDuckGo search returned 0 verified public results for this company.",
+                "search_warning": f"DuckDuckGo search could not find verified public leadership or overview for '{company_clean}'. Offline demo data was NOT substituted.",
+                "retrieval_timestamp": retrieval_timestamp,
+                "sources_retrieved": [],
+                "business_activities": [],
+                "recent_announcements": [],
+                "potential_business_needs": [],
+                "prospects": []
+            }
 
-        # Step 3: If live search was rate-limited, failed, or didn't identify executive names:
-        # Check if company is in our verified reference offline dataset
-        matched_offline = None
-        for k, v in VERIFIED_OFFLINE_COMPANIES.items():
-            if k in comp_key or comp_key in k:
-                matched_offline = v
+        # Live search returned relevant chunks: Synthesize factual profile with designation verification
+        return self._synthesize_live_discovery(
+            company_clean,
+            relevant_chunks,
+            retrieval_timestamp,
+            my_product_settings
+        )
+
+    def _verify_person_and_role(
+        self,
+        candidate_name: str,
+        candidate_role: str,
+        sources: List[Dict[str, str]],
+        retrieval_timestamp: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Requirements 4 & 5:
+        - Verify each person's current designation against retrieved sources.
+        - If a designation cannot be verified, show 'Role not verified' (ROLE_NOT_VERIFIED).
+        """
+        name_clean = candidate_name.strip()
+        name_lower = name_clean.lower()
+        if not name_clean or name_lower in ["not found", "unknown", "none", "n/a"]:
+            return None
+
+        # Must be explicitly mentioned in at least one retrieved source
+        matching_source = None
+        for s in sources:
+            text = (s.get("title", "") + " " + s.get("snippet", "")).lower()
+            if name_lower in text:
+                matching_source = s
                 break
 
-        if matched_offline:
-            # Return verified offline reference data clearly marked as DEMO_DATA
-            result = dict(matched_offline)
-            result["data_source"] = "DEMO_DATA"
-            result["status"] = "OK"
-            result["search_warning"] = (
-                f"DuckDuckGo live search encountered rate limits or network timeout. "
-                f"Displaying verified offline reference profiles for {matched_offline['company_name']}."
-            )
-            return result
+        if not matching_source:
+            return None
 
-        # Step 4: If company is unknown and live search found no verifiable results, explicitly return NOT FOUND
-        return {
-            "status": "NOT_FOUND",
-            "company_name": company_clean,
-            "data_source": "LIVE_SEARCH",
-            "company_overview": "NOT FOUND",
-            "search_error": search_error or "DuckDuckGo search returned 0 verified public results for this company.",
-            "search_warning": f"DuckDuckGo search could not verify public leadership or company overview for '{company_clean}'.",
-            "business_activities": [],
-            "recent_announcements": [],
-            "potential_business_needs": [],
-            "prospects": []
+        text = (matching_source.get("title", "") + " " + matching_source.get("snippet", "")).lower()
+
+        # Check designation verification
+        role_clean = candidate_role.strip()
+        role_lower = role_clean.lower()
+        role_tokens = [
+            w for w in role_lower.replace("/", " ").replace(",", " ").replace("&", " ").split()
+            if len(w) > 2 and w not in ["and", "the", "for", "with", "from", "inc", "corp"]
+        ]
+
+        title_synonyms = {
+            "ceo": ["ceo", "chief executive", "chief executive officer", "founder", "president", "co-founder"],
+            "cto": ["cto", "chief technology", "chief technology officer", "chief scientist", "head of engineering"],
+            "cfo": ["cfo", "chief financial", "chief financial officer", "finance", "treasurer"],
+            "coo": ["coo", "chief operating", "chief operating officer", "operations"],
+            "cpo": ["cpo", "chief people", "chief people officer", "hr", "human resources", "talent", "head of hr"],
+            "vp": ["vp", "vice president", "svp", "evp", "head of", "director"]
         }
 
-    def _synthesize_live_discovery(self, company: str, chunks: List[Dict[str, str]], my_product_settings: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+        role_verified = False
+        if role_tokens and any(tok in text for tok in role_tokens):
+            role_verified = True
+        else:
+            for key, syns in title_synonyms.items():
+                if any(k in role_lower for k in [key] + syns):
+                    if any(s in text for s in syns):
+                        role_verified = True
+                        break
+
+        if role_verified and role_clean.lower() not in ["role not verified", "unknown", ""]:
+            final_designation = role_clean
+            verification_status = "VERIFIED"
+        else:
+            final_designation = "Role not verified"
+            verification_status = "ROLE_NOT_VERIFIED"
+
+        return {
+            "name": name_clean,
+            "designation": final_designation,
+            "verification_status": verification_status,
+            "source_url": matching_source.get("url", ""),
+            "source_title": matching_source.get("title", ""),
+            "retrieval_timestamp": retrieval_timestamp,
+            "search_status": "SUCCESS"
+        }
+
+    def _synthesize_live_discovery(
+        self,
+        company: str,
+        chunks: List[Dict[str, str]],
+        retrieval_timestamp: str,
+        my_product_settings: Optional[Dict[str, str]] = None
+    ) -> Dict[str, Any]:
         """Extracts factual company overview, announcements, and verifiable prospects from live search."""
         product_info = ""
         if my_product_settings:
@@ -324,7 +492,12 @@ class CompanyDiscoveryEngine:
 
         context_lines = []
         for idx, c in enumerate(chunks[:8]):
-            context_lines.append(f"[{idx+1}] Title: {c.get('title')}\n    URL: {c.get('url')}\n    Snippet: {c.get('snippet')}")
+            context_lines.append(
+                f"[{idx+1}] Title: {c.get('title')}\n"
+                f"    URL: {c.get('url')}\n"
+                f"    Snippet: {c.get('snippet')}\n"
+                f"    Retrieved: {c.get('retrieval_timestamp', retrieval_timestamp)}"
+            )
         context_str = "\n".join(context_lines)
 
         system_prompt = (
@@ -334,7 +507,7 @@ class CompanyDiscoveryEngine:
             "STRICT RULES: "
             "1. NEVER invent employee names or job titles. A person MUST be explicitly named in the context with their role. "
             "2. If no employee names are verified in the context, leave 'prospects' empty []. "
-            "3. Every prospect MUST include the exact source URL from the context where they were mentioned. "
+            "3. Every prospect MUST include the exact source URL and Title from the context where they were mentioned. "
             "4. Never invent statistics or fake company announcements."
         )
 
@@ -364,76 +537,91 @@ Return valid JSON with these exact keys:
   "prospects": [
     {{
       "id": 1,
-      "name": "Full Name of real executive from context",
-      "designation": "Their actual role (e.g. CEO, CTO, VP)",
+      "name": "Full Name of real person from context",
+      "designation": "Their stated role or title",
       "company": "{company}",
       "professional_relevance": "Why relevant to B2B partnership",
-      "source_url": "Source URL from context verifying this person",
+      "source_url": "Source URL from context",
       "source_title": "Title of the source page"
     }}
   ]
 }}
 """
 
+        candidate_prospects = []
+        company_overview = f"{company} business overview based on live public search context."
+        business_activities = [f"Enterprise operations and business solutions at {company}"]
+        recent_announcements = []
+        potential_needs = ["Scaling operational efficiency and outbound sales effectiveness"]
+
         try:
             parsed = self.ollama.generate_json(user_prompt, system_prompt=system_prompt)
-            # Strict verification filter: Ensure each prospect's name was actually in the web snippets
-            verified_prospects = []
-            for p in parsed.get("prospects", []):
-                p_name = p.get("name", "").strip()
-                if not p_name or p_name.lower() in ["not found", "unknown", "none", "n/a"]:
-                    continue
-                if p_name.lower() in context_str.lower():
-                    verified_prospects.append(p)
-
-            # Build final structure
-            return {
-                "status": "OK" if verified_prospects else "PARTIAL",
-                "company_name": company,
-                "data_source": "LIVE_SEARCH",
-                "company_overview": parsed.get("company_overview", f"{company} public profile"),
-                "business_activities": parsed.get("business_activities", []),
-                "recent_announcements": parsed.get("recent_announcements", []),
-                "potential_business_needs": parsed.get("potential_business_needs", []),
-                "prospects": verified_prospects[:3],
-                "search_warning": None if verified_prospects else "Company found, but specific executive names were not verified in the snippets. Displayed company overview."
-            }
+            if parsed and isinstance(parsed, dict):
+                company_overview = parsed.get("company_overview", company_overview)
+                business_activities = parsed.get("business_activities", business_activities)
+                recent_announcements = parsed.get("recent_announcements", [])
+                potential_needs = parsed.get("potential_business_needs", potential_needs)
+                candidate_prospects = parsed.get("prospects", [])
         except Exception as e:
-            logger.warning(f"Ollama parsing error during discovery synthesis: {e}")
-            announcements = []
+            logger.warning(f"Ollama generation fallback in discovery synthesis: {e}")
             for c in chunks[:3]:
-                announcements.append({
+                recent_announcements.append({
                     "title": c.get("title", ""),
                     "url": c.get("url", ""),
                     "snippet": c.get("snippet", "")
                 })
 
-            # Check if company matches verified offline companies
-            matched_offline = None
-            comp_key = company.lower()
-            for k, v in VERIFIED_OFFLINE_COMPANIES.items():
-                if k in comp_key or comp_key in k:
-                    matched_offline = v
-                    break
-
-            if matched_offline:
-                result = dict(matched_offline)
-                result["data_source"] = "DEMO_DATA"
-                result["status"] = "OK"
-                result["search_warning"] = (
-                    f"Live search returned general context but local LLM is offline or model not installed. "
-                    f"Displaying verified offline reference profiles for {matched_offline['company_name']}."
+        # Regex heuristic candidate extraction if LLM is offline or returned empty prospects
+        if not candidate_prospects:
+            import re
+            for c in chunks:
+                raw_text = c.get("title", "") + ". " + c.get("snippet", "")
+                matches = re.findall(
+                    r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)(?:,\s*|\s+(?:is|serves as|acts as|works as)?\s*(?:the\s+)?)(CEO|Chief Executive Officer|Founder|President|CTO|Chief Technology Officer|CFO|Chief Financial Officer|COO|VP [A-Za-z]+|Head of [A-Za-z]+)",
+                    raw_text
                 )
-                return result
+                for m_name, m_role in matches:
+                    if m_name.lower() not in [p.get("name", "").lower() for p in candidate_prospects]:
+                        candidate_prospects.append({
+                            "name": m_name,
+                            "designation": m_role,
+                            "source_url": c.get("url", ""),
+                            "source_title": c.get("title", "")
+                        })
 
-            return {
-                "status": "OK",
-                "company_name": company,
-                "data_source": "LIVE_SEARCH",
-                "company_overview": chunks[0].get("snippet", f"{company} business overview"),
-                "business_activities": [f"Enterprise operations at {company}"],
-                "recent_announcements": announcements,
-                "potential_business_needs": ["Optimizing operational and sales performance"],
-                "prospects": [],
-                "search_warning": "Could not verify individual executive names from raw search snippets without hallucinating. Please select manual entry or verified demo lead."
+        # Requirement 4 & 5: Verify each person's current designation against retrieved sources
+        verified_prospects = []
+        for p in candidate_prospects:
+            p_name = p.get("name", "").strip()
+            p_role = p.get("designation", "").strip()
+            verified = self._verify_person_and_role(p_name, p_role, chunks, retrieval_timestamp)
+            if verified:
+                verified["id"] = len(verified_prospects) + 1
+                verified["company"] = company
+                verified["professional_relevance"] = p.get("professional_relevance", f"Leadership member at {company}")
+                verified_prospects.append(verified)
+
+        sources_retrieved = [
+            {
+                "title": c.get("title", ""),
+                "url": c.get("url", ""),
+                "retrieval_timestamp": retrieval_timestamp
             }
+            for c in chunks[:5]
+        ]
+
+        return {
+            "status": "OK" if verified_prospects else "PARTIAL",
+            "search_status": "SUCCESS",
+            "data_source": "LIVE_SEARCH",
+            "is_demo_mode": False,
+            "company_name": company,
+            "company_overview": company_overview,
+            "business_activities": business_activities,
+            "recent_announcements": recent_announcements,
+            "potential_business_needs": potential_needs,
+            "prospects": verified_prospects[:3],
+            "sources_retrieved": sources_retrieved,
+            "retrieval_timestamp": retrieval_timestamp,
+            "search_warning": None if verified_prospects else "Company context retrieved, but specific executive designations could not be verified in snippets."
+        }
