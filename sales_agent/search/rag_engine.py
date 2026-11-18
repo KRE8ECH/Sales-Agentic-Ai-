@@ -27,13 +27,19 @@ class RAGEngine:
             if not text:
                 continue
 
-            # Calculate heuristic relevance score
-            score = 1.0
+            # Strict relevance check: chunk MUST mention either company or lead name
             text_lower = text.lower()
+            has_company = (company_lower in text_lower) if company_lower else False
+            has_name = (name_lower in text_lower) if name_lower else False
 
-            if company_lower in text_lower:
+            if not (has_company or has_name):
+                # Discard unrelated web noise
+                continue
+
+            score = 1.0
+            if has_company:
                 score += 3.0
-            if name_lower in text_lower:
+            if has_name:
                 score += 4.0
             for token in role_tokens:
                 if len(token) > 2 and token in text_lower:

@@ -3,7 +3,6 @@ import socketserver
 import json
 import urllib.parse
 from datetime import datetime
-import threading
 from typing import Dict, Any
 
 from sales_agent.config import config
@@ -130,6 +129,11 @@ HTML_PAGE = """<!DOCTYPE html>
       padding: 0 28px;
     }
     .top-header h1 { font-size: 18px; font-weight: 600; }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
     .btn-primary {
       background: linear-gradient(135deg, #38bdf8, #0284c7);
       color: #fff;
@@ -145,6 +149,38 @@ HTML_PAGE = """<!DOCTYPE html>
       transition: opacity 0.2s;
     }
     .btn-primary:hover { opacity: 0.9; }
+
+    .btn-demo {
+      background: #1e293b;
+      color: #38bdf8;
+      border: 1px solid #38bdf8;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-demo:hover { background: rgba(56, 189, 248, 0.15); }
+
+    .btn-approve {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.2s;
+    }
+    .btn-approve:hover { opacity: 0.9; }
 
     .content-viewport {
       flex: 1;
@@ -249,12 +285,13 @@ HTML_PAGE = """<!DOCTYPE html>
       letter-spacing: 0.5px;
     }
     .badge-NEW { background: #334155; color: #cbd5e1; }
-    .badge-RESEARCHED { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+    .badge-AWAITING_APPROVAL { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
     .badge-IN_SEQUENCE { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
     .badge-ESCALATED { background: rgba(16, 185, 129, 0.2); color: #34d399; }
     .badge-PAUSED { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
     .badge-STOPPED { background: rgba(239, 68, 68, 0.2); color: #f87171; }
     .badge-COMPLETED { background: #1e293b; color: #94a3b8; }
+    .badge-SENT { background: rgba(16, 185, 129, 0.2); color: #34d399; }
 
     /* Modal */
     .modal-backdrop {
@@ -277,7 +314,7 @@ HTML_PAGE = """<!DOCTYPE html>
     .modal h2 { margin-bottom: 16px; font-size: 18px; }
     .form-group { margin-bottom: 14px; }
     .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
-    .form-group input {
+    .form-group input, .form-group textarea {
       width: 100%;
       background: #0f172a;
       border: 1px solid var(--card-border);
@@ -285,6 +322,7 @@ HTML_PAGE = """<!DOCTYPE html>
       padding: 10px 14px;
       border-radius: 8px;
       font-size: 14px;
+      font-family: inherit;
     }
     .modal-actions {
       display: flex;
@@ -339,6 +377,51 @@ HTML_PAGE = """<!DOCTYPE html>
       align-items: center;
       gap: 8px;
     }
+
+    .warning-box {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid var(--accent-amber);
+      color: #fbbf24;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+
+    .source-link {
+      color: var(--primary);
+      text-decoration: underline;
+      font-size: 12px;
+      display: inline-block;
+      margin-top: 3px;
+    }
+
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      right: 0;
+      background-color: #1e293b;
+      min-width: 260px;
+      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      z-index: 10;
+      overflow: hidden;
+    }
+    .dropdown-content a {
+      color: #f8fafc;
+      padding: 12px 16px;
+      text-decoration: none;
+      display: block;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .dropdown-content a:hover { background-color: #0f172a; color: var(--primary); }
+    .dropdown:hover .dropdown-content { display: block; }
   </style>
 </head>
 <body>
@@ -348,7 +431,7 @@ HTML_PAGE = """<!DOCTYPE html>
       <div class="brand-icon">🚀</div>
       <div>
         <h2>SalesAgentic.AI</h2>
-        <span>Track D - Outreach Agent</span>
+        <span>Personalized Outreach Agent</span>
       </div>
     </div>
 
@@ -356,6 +439,7 @@ HTML_PAGE = """<!DOCTYPE html>
       <button class="nav-btn active" onclick="switchTab('chat')">💬 Agent Chatbot</button>
       <button class="nav-btn" onclick="switchTab('leads')">👥 Leads & Pipeline</button>
       <button class="nav-btn" onclick="switchTab('detail')">🔍 RAG Dossier & Sequence</button>
+      <button class="nav-btn" onclick="switchTab('settings')">⚙️ My Product Settings</button>
       <button class="nav-btn" onclick="switchTab('logs')">📜 Agent Decision Logs</button>
     </div>
 
@@ -373,7 +457,18 @@ HTML_PAGE = """<!DOCTYPE html>
   <div class="main-content">
     <div class="top-header">
       <h1 id="view-title">Agent Chatbot & Command Center</h1>
-      <button class="btn-primary" onclick="openAddLeadModal()">+ Add New Lead</button>
+      <div class="header-actions">
+        <!-- Demo Lead Dropdown -->
+        <div class="dropdown">
+          <button class="btn-demo">⚡ Use Demo Lead ▾</button>
+          <div class="dropdown-content">
+            <a onclick="loadDemoLead('founder')">🚀 <strong>Startup Founder</strong><br><small style="color:var(--text-muted)">Alex Rivera @ KiteFlow AI</small></a>
+            <a onclick="loadDemoLead('hr')">👥 <strong>HR Head</strong><br><small style="color:var(--text-muted)">Maya Patel @ Lumina Health</small></a>
+            <a onclick="loadDemoLead('cto')">💻 <strong>Chief Tech Officer</strong><br><small style="color:var(--text-muted)">Marcus Sterling @ Apex Payments</small></a>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="openAddLeadModal()">+ Add New Lead</button>
+      </div>
     </div>
 
     <div class="content-viewport">
@@ -384,8 +479,11 @@ HTML_PAGE = """<!DOCTYPE html>
             <div class="chat-messages" id="chat-messages">
               <div class="message agent">
                 👋 Hello! I am your <strong>Personalized Multi-Touch Sales Outreach Agent</strong>.<br><br>
-                I research prospects using <strong>DuckDuckGo</strong>, ground personalized emails & LinkedIn messages with verified facts, classify inbound replies with <strong>Ollama LLM</strong>, and make autonomous decisions on when to continue, pause, or escalate to a human sales rep.<br><br>
-                Try saying: <em>"Research Jensen Huang at NVIDIA, CEO"</em> or click <strong>+ Add New Lead</strong>!
+                <strong>What I do:</strong><br>
+                1. 🔍 Research each lead via <strong>DuckDuckGo</strong> and build an evidence dossier with clickable source links.<br>
+                2. ✍️ Draft personalized emails strictly using your <strong>My Product Settings</strong> (no invented stats!).<br>
+                3. 🛡️ Keep every drafted touch as <strong>"Draft - Awaiting Approval"</strong> until you click <em>Approve & Send</em>.<br>
+                4. ⚡ You can click <strong>"Use Demo Lead"</strong> above for instant offline testing!
               </div>
             </div>
             <div class="chat-input-bar">
@@ -410,7 +508,7 @@ HTML_PAGE = """<!DOCTYPE html>
       <!-- 3. RAG DOSSIER & SEQUENCE TAB -->
       <div id="tab-detail" class="tab-section">
         <div id="detail-empty" style="text-align:center; padding:50px; color:var(--text-muted);">
-          Select a lead from the <strong>Leads & Pipeline</strong> tab to inspect its RAG Research Dossier, Outreach Sequence, and Inbound Replies.
+          Select a lead from the <strong>Leads & Pipeline</strong> tab or click <strong>⚡ Use Demo Lead</strong> above to inspect its RAG Research Dossier and Outreach Sequence.
         </div>
         <div id="detail-content" style="display:none;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -427,24 +525,60 @@ HTML_PAGE = """<!DOCTYPE html>
           <!-- RAG Dossier Box -->
           <div class="panel-box">
             <div class="panel-title">🔍 DuckDuckGo RAG Research Dossier</div>
+            <div id="dossier-warning-area"></div>
             <div id="dossier-body" style="font-size:14px; line-height:1.6;">-</div>
           </div>
 
           <!-- Sequence Touches Box -->
           <div class="panel-box">
-            <div class="panel-title">✉️ Multi-Touch Sequence (Escalating Intent)</div>
+            <div class="panel-title">✉️ Multi-Touch Sequence (Human Approval Required)</div>
             <div id="touches-body">-</div>
           </div>
 
           <!-- Inbound Replies & Classifications -->
           <div class="panel-box">
-            <div class="panel-title">📥 Inbound Replies & LLM Intent Classification</div>
+            <div class="panel-title">📥 Inbound Replies & Intent Classification</div>
             <div id="replies-body">-</div>
           </div>
         </div>
       </div>
 
-      <!-- 4. LOGS TAB -->
+      <!-- 4. SETTINGS TAB -->
+      <div id="tab-settings" class="tab-section">
+        <h2 style="font-size:16px; margin-bottom:16px;">⚙️ My Product & Sender Settings</h2>
+        <p style="color:var(--text-muted); font-size:13px; margin-bottom:20px;">
+          Configure your product details below. The agent will use <strong>ONLY</strong> these values in every outreach email. Invented company names, fake stats, or hardcoded personas are strictly forbidden.
+        </p>
+
+        <div class="panel-box" style="max-width:650px;">
+          <div class="form-group">
+            <label>Product Name</label>
+            <input type="text" id="setting-product-name" placeholder="e.g. LeadPulse AI">
+          </div>
+          <div class="form-group">
+            <label>What My Product Does (Capabilities)</label>
+            <textarea id="setting-what-it-does" rows="3" placeholder="e.g. Automates personalized multi-touch outreach for B2B tech sales teams with factual research grounding."></textarea>
+          </div>
+          <div class="form-group">
+            <label>My Name (Sender Name)</label>
+            <input type="text" id="setting-sender-name" placeholder="e.g. Rahul Sharma">
+          </div>
+          <div class="form-group">
+            <label>My Company Name</label>
+            <input type="text" id="setting-company-name" placeholder="e.g. ApexScale Labs">
+          </div>
+          <div class="form-group">
+            <label>Calendar / Meeting Link (Optional)</label>
+            <input type="text" id="setting-calendly" placeholder="e.g. https://cal.com/rahul/15min">
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+            <button class="btn-primary" onclick="saveSettings()">Save Product Settings</button>
+            <span id="settings-save-status" style="font-size:13px; color:var(--accent-green); display:none;">✔ Settings saved successfully!</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. LOGS TAB -->
       <div id="tab-logs" class="tab-section">
         <h2 style="font-size:16px; margin-bottom:12px;">Visible Decision & Reasoning Audit Logs</h2>
         <div class="table-container">
@@ -453,8 +587,8 @@ HTML_PAGE = """<!DOCTYPE html>
               <tr>
                 <th style="width:160px;">Timestamp</th>
                 <th style="width:80px;">Lead ID</th>
-                <th style="width:130px;">Pipeline Stage</th>
-                <th style="width:200px;">Decision</th>
+                <th style="width:140px;">Pipeline Stage</th>
+                <th style="width:220px;">Decision</th>
                 <th>Reasoning & Autonomous Thought Log</th>
               </tr>
             </thead>
@@ -489,7 +623,7 @@ HTML_PAGE = """<!DOCTYPE html>
       </div>
       <div class="modal-actions">
         <button class="btn-secondary" onclick="closeAddLeadModal()">Cancel</button>
-        <button class="btn-primary" onclick="submitNewLead()">Launch Agent Pipeline</button>
+        <button class="btn-primary" onclick="submitNewLead()">Launch Research & Draft</button>
       </div>
     </div>
   </div>
@@ -505,13 +639,15 @@ HTML_PAGE = """<!DOCTYPE html>
       const titles = {
         'chat': 'Agent Chatbot & Command Center',
         'leads': 'Leads & Pipeline State Machine',
-        'detail': 'RAG Research Dossier & Outreach Sequence',
+        'detail': 'RAG Research Dossier & Sequence',
+        'settings': 'My Product & Sender Settings',
         'logs': 'Agent Decision Logs & Audit Trail'
       };
       document.getElementById('view-title').innerText = titles[tabId] || 'Outreach Agent';
 
       if (tabId === 'leads') loadLeads();
       if (tabId === 'logs') loadLogs();
+      if (tabId === 'settings') loadSettings();
     }
 
     async function checkHealth() {
@@ -533,30 +669,76 @@ HTML_PAGE = """<!DOCTYPE html>
       }
     }
 
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        document.getElementById('setting-product-name').value = data.product_name || '';
+        document.getElementById('setting-what-it-does').value = data.what_it_does || '';
+        document.getElementById('setting-sender-name').value = data.sender_name || '';
+        document.getElementById('setting-company-name').value = data.company_name || '';
+        document.getElementById('setting-calendly').value = data.calendly_link || '';
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function saveSettings() {
+      const payload = {
+        product_name: document.getElementById('setting-product-name').value.trim(),
+        what_it_does: document.getElementById('setting-what-it-does').value.trim(),
+        sender_name: document.getElementById('setting-sender-name').value.trim(),
+        company_name: document.getElementById('setting-company-name').value.trim(),
+        calendly_link: document.getElementById('setting-calendly').value.trim()
+      };
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        const statusMsg = document.getElementById('settings-save-status');
+        statusMsg.style.display = 'inline';
+        setTimeout(() => { statusMsg.style.display = 'none'; }, 3000);
+      }
+    }
+
+    async function loadDemoLead(type) {
+      const res = await fetch('/api/demo-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type })
+      });
+      const data = await res.json();
+      selectLead(data.lead_id);
+    }
+
     async function loadLeads() {
       const res = await fetch('/api/leads');
       const leads = await res.json();
       const grid = document.getElementById('lead-grid');
       grid.innerHTML = '';
       if (!leads.length) {
-        grid.innerHTML = '<div style="color:var(--text-muted); grid-column:1/-1;">No leads yet. Click "+ Add New Lead" above!</div>';
+        grid.innerHTML = '<div style="color:var(--text-muted); grid-column:1/-1;">No leads yet. Click "+ Add New Lead" or "⚡ Use Demo Lead" above!</div>';
         return;
       }
       leads.forEach(l => {
         const card = document.createElement('div');
         card.className = 'lead-card' + (l.id === activeLeadId ? ' selected' : '');
         card.onclick = () => selectLead(l.id);
+        const statusDisplay = l.status === 'AWAITING_APPROVAL' ? 'Draft - Awaiting Approval' : l.status;
         card.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
             <div>
               <div style="font-weight:700; font-size:16px;">${l.name}</div>
               <div style="color:var(--text-muted); font-size:13px;">${l.role || ''} at <strong style="color:#fff;">${l.company}</strong></div>
             </div>
-            <span class="badge badge-${l.status}">${l.status}</span>
+            <span class="badge badge-${l.status}">${statusDisplay}</span>
           </div>
           <div style="font-size:12px; color:var(--text-muted); display:flex; justify-content:space-between;">
             <span>Current Touch: <strong>#${l.current_touch}/4</strong></span>
-            <span>Next: ${l.next_touch_date || 'Active'}</span>
+            <span>Next: ${l.next_touch_date || 'Awaiting Review'}</span>
           </div>
         `;
         grid.appendChild(card);
@@ -576,28 +758,45 @@ HTML_PAGE = """<!DOCTYPE html>
       document.getElementById('detail-content').style.display = 'block';
 
       document.getElementById('lead-detail-name').innerText = lead.name;
+      const statusDisplay = lead.status === 'AWAITING_APPROVAL' ? 'Draft - Awaiting Approval' : lead.status;
       document.getElementById('lead-detail-subtitle').innerHTML = `
-        ${lead.role || ''} at <strong>${lead.company}</strong> | Status: <span class="badge badge-${lead.status}">${lead.status}</span> | Touch #${lead.current_touch}/4
+        ${lead.role || ''} at <strong>${lead.company}</strong> | Status: <span class="badge badge-${lead.status}">${statusDisplay}</span> | Touch #${lead.current_touch}/4
       `;
 
       // Dossier
       const d = lead.research_dossier || {};
-      let dHtml = `<p><strong>Overview:</strong> ${d.company_overview || 'N/A'}</p>`;
-      if (d.recent_events && d.recent_events.length) {
-        dHtml += `<h4 style="margin:12px 0 6px; color:#38bdf8;">Verified Public Events / News:</h4><ul>`;
-        d.recent_events.forEach(ev => dHtml += `<li>${ev}</li>`);
+      const warnArea = document.getElementById('dossier-warning-area');
+      warnArea.innerHTML = '';
+      if (d.search_warning) {
+        warnArea.innerHTML = `<div class="warning-box">⚠️ ${d.search_warning}</div>`;
+      }
+
+      let dHtml = `<p style="margin-bottom:12px;"><strong>Company Overview:</strong> ${d.company_overview || 'NOT FOUND'}</p>`;
+      
+      // Facts with clickable URLs
+      const facts = d.facts || [];
+      if (!facts.length || (facts.length === 1 && facts[0].fact === 'NOT FOUND')) {
+        dHtml += `<div style="background:#0b1120; border:1px solid #ef4444; color:#f87171; padding:10px 14px; border-radius:6px; margin:8px 0;"><strong>Research Facts:</strong> NOT FOUND (No verified public web context found)</div>`;
+      } else {
+        dHtml += `<h4 style="margin:14px 0 8px; color:#38bdf8;">Verified Public Facts (DuckDuckGo RAG):</h4><ul style="padding-left:18px;">`;
+        facts.forEach(f => {
+          const factText = f.fact || f;
+          const url = f.source_url || '';
+          const title = f.source_title || url;
+          dHtml += `<li style="margin-bottom:8px;">
+            <span>${factText}</span><br>
+            ${url ? `<a href="${url}" target="_blank" class="source-link">🔗 Source: ${title}</a>` : ''}
+          </li>`;
+        });
         dHtml += `</ul>`;
       }
-      if (d.tailored_hooks && d.tailored_hooks.length) {
-        dHtml += `<h4 style="margin:12px 0 6px; color:#38bdf8;">Tailored Outreach Hooks:</h4><ul>`;
+
+      if (d.tailored_hooks && d.tailored_hooks.length && d.tailored_hooks[0] !== 'NOT FOUND') {
+        dHtml += `<h4 style="margin:14px 0 6px; color:#38bdf8;">Tailored Outreach Angles:</h4><ul style="padding-left:18px;">`;
         d.tailored_hooks.forEach(h => dHtml += `<li>${h}</li>`);
         dHtml += `</ul>`;
       }
-      if (d.sources && d.sources.length) {
-        dHtml += `<h4 style="margin:12px 0 6px; color:#38bdf8;">DuckDuckGo Citations:</h4><div style="font-size:12px;">`;
-        d.sources.forEach(s => dHtml += `<div>[${s.id}] <a href="${s.url}" target="_blank" style="color:var(--primary);">${s.title}</a></div>`);
-        dHtml += `</div>`;
-      }
+
       document.getElementById('dossier-body').innerHTML = dHtml;
 
       // Touches
@@ -606,15 +805,23 @@ HTML_PAGE = """<!DOCTYPE html>
         tHtml = '<p style="color:var(--text-muted);">No touches drafted yet.</p>';
       } else {
         touches.forEach(t => {
+          const isAwaiting = t.status === 'AWAITING_APPROVAL';
           tHtml += `
-            <div style="background:#0b1120; border:1px solid var(--card-border); border-radius:8px; padding:16px; margin-bottom:12px;">
-              <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+            <div style="background:#0b1120; border:1px solid ${isAwaiting ? '#f59e0b' : 'var(--card-border)'}; border-radius:8px; padding:16px; margin-bottom:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <span style="font-weight:700; color:var(--primary);">Touch #${t.touch_number} [${t.channel.toUpperCase()}]</span>
-                <span style="font-size:12px; color:var(--accent-green); font-weight:600;">Status: ${t.status}</span>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span class="badge ${isAwaiting ? 'badge-AWAITING_APPROVAL' : 'badge-SENT'}">
+                    ${isAwaiting ? 'Draft - Awaiting Approval' : 'SENT (Simulated)'}
+                  </span>
+                  ${isAwaiting ? `<button class="btn-approve" onclick="approveTouch(${t.id})">✔ Approve & Send (simulated)</button>` : ''}
+                </div>
               </div>
               ${t.subject ? `<div style="font-weight:600; margin-bottom:8px;">Subject: ${t.subject}</div>` : ''}
-              <div style="white-space:pre-wrap; font-size:13px; color:#cbd5e1; background:#1e293b; padding:12px; border-radius:6px;">${t.content}</div>
-              <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">Evidence used: <span style="color:#fbbf24;">${t.researched_evidence_used || 'Standard'}</span></div>
+              <div style="white-space:pre-wrap; font-size:13px; color:#cbd5e1; background:#1e293b; padding:12px; border-radius:6px; line-height:1.5;">${t.content}</div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+                Evidence used: <span style="color:#fbbf24;">${t.researched_evidence_used || 'Standard product messaging'}</span>
+              </div>
             </div>
           `;
         });
@@ -640,6 +847,18 @@ HTML_PAGE = """<!DOCTYPE html>
         });
       }
       document.getElementById('replies-body').innerHTML = rHtml;
+    }
+
+    async function approveTouch(touchId) {
+      const res = await fetch('/api/approve-touch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ touch_id: touchId })
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        selectLead(activeLeadId);
+      }
     }
 
     async function loadLogs() {
@@ -673,7 +892,6 @@ HTML_PAGE = """<!DOCTYPE html>
       input.value = '';
       chatBox.scrollTop = chatBox.scrollHeight;
 
-      // Temporary bot thinking
       const thinkingMsg = document.createElement('div');
       thinkingMsg.className = 'message agent';
       thinkingMsg.id = 'temp-thinking';
@@ -711,12 +929,11 @@ HTML_PAGE = """<!DOCTYPE html>
       if (!name || !company) { alert('Name and Company are required.'); return; }
 
       closeAddLeadModal();
-      // Show in chat
       switchTab('chat');
       const chatBox = document.getElementById('chat-messages');
       const notify = document.createElement('div');
       notify.className = 'message agent';
-      notify.innerHTML = `🚀 <strong>Starting Autonomous Multi-Agent Pipeline for ${name} at ${company}...</strong><br>1. Research Agent executing DuckDuckGo search + RAG scoring<br>2. Sequence Planner creating 4-touch escalating cadence<br>3. Personalized Drafting Agent generating Touch #1 copy...`;
+      notify.innerHTML = `🚀 <strong>Researching ${name} at ${company}...</strong><br>DuckDuckGo search + RAG scoring in progress. Touch #1 will be drafted in <em>Draft - Awaiting Approval</em> status.`;
       chatBox.appendChild(notify);
       chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -730,11 +947,11 @@ HTML_PAGE = """<!DOCTYPE html>
       const finishMsg = document.createElement('div');
       finishMsg.className = 'message agent';
       finishMsg.innerHTML = `
-        ✅ <strong>Pipeline Complete for ${name} (Lead #${data.lead_id})!</strong><br><br>
-        <strong>Touch #1 Drafted & Dispatched:</strong><br>
+        ✅ <strong>Lead #${data.lead_id} (${name}) Ready!</strong><br><br>
+        <strong>Touch #1 Drafted (Status: Draft - Awaiting Approval):</strong><br>
         <em>Subject:</em> ${data.first_touch.subject || 'Direct Note'}<br>
         <pre style="background:#1e293b; padding:10px; border-radius:6px; margin:8px 0; white-space:pre-wrap;">${data.first_touch.content}</pre>
-        <small style="color:var(--text-muted);">Research evidence grounded: ${data.first_touch.researched_evidence_used}</small>
+        <button class="btn-approve" onclick="approveTouch(${data.first_touch.touch_id}); this.disabled=true; this.innerText='Approved & Sent';">✔ Approve & Send (simulated)</button>
       `;
       chatBox.appendChild(finishMsg);
       chatBox.scrollTop = chatBox.scrollHeight;
@@ -757,7 +974,7 @@ HTML_PAGE = """<!DOCTYPE html>
 
     async function simulateCadenceAdvance() {
       if (!activeLeadId) return;
-      if (!confirm("Simulate no-reply cadence timeout? The agent will evaluate whether to advance to next scheduled touch.")) return;
+      if (!confirm("Simulate no-reply cadence timeout? The agent will draft the next scheduled touch.")) return;
       const res = await fetch('/api/advance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -771,6 +988,7 @@ HTML_PAGE = """<!DOCTYPE html>
     // Init
     checkHealth();
     loadLeads();
+    loadSettings();
   </script>
 </body>
 </html>
@@ -778,7 +996,7 @@ HTML_PAGE = """<!DOCTYPE html>
 
 class AgentWebHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, format, *args):
-        pass  # Quiet logger
+        pass  # Quiet console logger
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -799,6 +1017,11 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                 "ollama_base_url": ollama.base_url
             }
             self.send_json(data)
+            return
+
+        elif path == "/api/settings":
+            settings = db.get_product_settings()
+            self.send_json(settings)
             return
 
         elif path == "/api/leads":
@@ -832,7 +1055,24 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
         except Exception:
             payload = {}
 
-        if path == "/api/leads":
+        if path == "/api/settings":
+            db.save_product_settings(payload)
+            self.send_json({"status": "ok"})
+            return
+
+        elif path == "/api/demo-lead":
+            demo_type = payload.get("type", "founder")
+            res = orchestrator.load_demo_lead(demo_type)
+            self.send_json(res)
+            return
+
+        elif path == "/api/approve-touch":
+            touch_id = int(payload.get("touch_id", 0))
+            orchestrator.approve_and_send(touch_id)
+            self.send_json({"status": "ok"})
+            return
+
+        elif path == "/api/leads":
             name = payload.get("name", "")
             company = payload.get("company", "")
             role = payload.get("role", "")
@@ -864,9 +1104,7 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
 
         elif path == "/api/chat":
             msg = payload.get("message", "").strip()
-            # Check if user asked to research or prospect
             if msg.lower().startswith("research") or msg.lower().startswith("prospect") or msg.lower().startswith("add lead"):
-                # Fast heuristic parse: "Research [Name] at [Company], [Role]"
                 import re
                 m = re.search(r"(?:research|prospect|add lead)\s+([A-Za-z\s]+?)\s+at\s+([A-Za-z0-9\s]+?)(?:,\s*([A-Za-z0-9\s]+))?$", msg, re.IGNORECASE)
                 if m:
@@ -881,25 +1119,25 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                     )
                     reply_text = (
                         f"✅ Researched and onboarded **{p_name}** at **{p_comp}** (Lead #{res['lead_id']})!\n\n"
-                        f"**Touch #1 Dispatched ({res['first_touch'].get('channel', 'email').upper()}):**\n"
+                        f"**Touch #1 Drafted (Awaiting Approval):**\n"
                         f"Subject: {res['first_touch'].get('subject')}\n\n"
                         f"{res['first_touch'].get('content')}\n\n"
-                        f"*Evidence Grounded:* {res['first_touch'].get('researched_evidence_used')}"
+                        f"*Evidence Grounded:* {res['first_touch'].get('researched_evidence_used')}\n\n"
+                        f"👉 *Click 'Approve & Send (simulated)' on the sequence viewer to approve dispatch.*"
                     )
                     self.send_json({"reply": reply_text})
                     return
 
-            # Otherwise conversational answer via Ollama
             try:
                 reply = ollama.generate(
                     prompt=msg,
                     system_prompt=(
                         "You are an AI sales outreach strategist and autonomous sales agent assistant. "
-                        "Help the user craft cold outreach, explain multi-touch sequence strategies, or explain your decision-making framework."
+                        "Assist the user with prospecting strategy, review drafts, or explain your decision-making framework."
                     )
                 )
-            except Exception as e:
-                reply = f"I'm ready to assist! You can tell me 'Research [Name] at [Company], [Role]' or use the '+ Add New Lead' button above."
+            except Exception:
+                reply = "I'm ready to assist! You can tell me 'Research [Name] at [Company], [Role]' or use the '⚡ Use Demo Lead' button."
 
             self.send_json({"reply": reply})
             return

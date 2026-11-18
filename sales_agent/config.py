@@ -4,11 +4,12 @@ from typing import List, Dict
 
 @dataclass
 class SenderProfile:
-    name: str = "Alex Morgan"
-    role: str = "Head of Business Development"
-    company: str = "GrowthScale AI"
-    value_proposition: str = "We help B2B tech and growth teams automate repetitive SDR workflows while delivering 3x higher reply rates through hyper-personalized, context-grounded outreach."
-    calendly_link: str = "https://cal.com/alex-growthscale/15min"
+    name: str = "My Name"
+    role: str = "Founder"
+    company: str = "My Company"
+    product_name: str = "My Product"
+    what_it_does: str = "Automates B2B sales research and crafts personalized multi-touch outreach."
+    calendly_link: str = ""
 
 @dataclass
 class SequenceTouchRule:

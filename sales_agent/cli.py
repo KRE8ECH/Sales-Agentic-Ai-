@@ -23,7 +23,7 @@ def print_banner():
     """
     console.print(f"[bold cyan]{banner}[/bold cyan]")
     console.print(f"[yellow]Ollama Host:[/yellow] {config.ollama_base_url} | [yellow]Model:[/yellow] {config.ollama_model}")
-    console.print("[dim]Commands: 'add', 'leads', 'show <id>', 'reply <id>', 'advance <id>', 'logs <id>', 'models', 'exit'[/dim]\n")
+    console.print("[dim]Commands: 'demo', 'research <name> at <company>', 'leads', 'show <id>', 'approve <touch_id>', 'reply <id>', 'settings', 'logs <id>', 'exit'[/dim]\n")
 
 def check_ollama(client: OllamaClient):
     if client.is_connected():
@@ -41,7 +41,7 @@ def check_ollama(client: OllamaClient):
 def display_leads(db: Database):
     leads = db.list_leads()
     if not leads:
-        console.print("[yellow]No leads found in database. Use 'add' command to prospect a new lead.[/yellow]")
+        console.print("[yellow]No leads found in database. Use 'add' or 'demo' command to prospect a lead.[/yellow]")
         return
 
     table = Table(title="Lead Pipeline & Stateful Sequence Tracking", show_lines=True)
@@ -51,27 +51,31 @@ def display_leads(db: Database):
     table.add_column("Role", style="magenta")
     table.add_column("Status", style="bold")
     table.add_column("Touch", justify="center")
-    table.add_column("Next Action Date", style="dim")
+    table.add_column("Next Action", style="dim")
 
     for l in leads:
-        status_color = {
-            "NEW": "white",
-            "RESEARCHED": "cyan",
-            "IN_SEQUENCE": "blue",
-            "ESCALATED": "bold green",
-            "PAUSED": "yellow",
-            "STOPPED": "red",
-            "COMPLETED": "dim"
-        }.get(l["status"], "white")
+        status = l["status"]
+        if status == "AWAITING_APPROVAL":
+            status_text = "[bold yellow]Draft - Awaiting Approval[/bold yellow]"
+        elif status == "IN_SEQUENCE":
+            status_text = "[blue]IN_SEQUENCE[/blue]"
+        elif status == "ESCALATED":
+            status_text = "[bold green]ESCALATED[/bold green]"
+        elif status == "PAUSED":
+            status_text = "[yellow]PAUSED[/yellow]"
+        elif status == "STOPPED":
+            status_text = "[red]STOPPED[/red]"
+        else:
+            status_text = f"[white]{status}[/white]"
 
         table.add_row(
             str(l["id"]),
             l["name"],
             l["company"],
             l.get("role") or "N/A",
-            f"[{status_color}]{l['status']}[/{status_color}]",
+            status_text,
             f"#{l['current_touch']}/4",
-            l.get("next_touch_date") or "Immediate"
+            l.get("next_touch_date") or ("Ready for Approval" if status == "AWAITING_APPROVAL" else "Active")
         )
 
     console.print(table)
@@ -82,31 +86,44 @@ def show_lead_details(db: Database, lead_id: int):
         console.print(f"[red]Lead #{lead_id} not found.[/red]")
         return
 
+    status_str = "Draft - Awaiting Approval" if lead["status"] == "AWAITING_APPROVAL" else lead["status"]
     console.print(Panel(
         f"[bold white]Lead #{lead['id']}: {lead['name']}[/bold white] ({lead.get('role', 'N/A')} at [bold cyan]{lead['company']}[/bold cyan])\n"
-        f"Status: [bold green]{lead['status']}[/bold green] | Current Touch: #{lead['current_touch']}/4 | Email: {lead.get('email', 'N/A')}",
+        f"Status: [bold yellow]{status_str}[/bold yellow] | Current Touch: #{lead['current_touch']}/4 | Email: {lead.get('email', 'N/A')}",
         title="Lead Overview"
     ))
 
     # Research Dossier
     dossier = lead.get("research_dossier")
     if dossier:
-        md_text = f"### Company Overview\n{dossier.get('company_overview', 'N/A')}\n\n"
-        md_text += "### Verified Recent News / Events (DuckDuckGo Search)\n"
-        for ev in dossier.get("recent_events", []):
-            md_text += f"- {ev}\n"
+        # Check warning
+        if dossier.get("search_warning"):
+            console.print(Panel(
+                f"[bold yellow]⚠️ {dossier['search_warning']}[/bold yellow]",
+                border_style="yellow",
+                title="Search Notice"
+            ))
+
+        md_text = f"### Company Overview\n{dossier.get('company_overview', 'NOT FOUND')}\n\n"
+        md_text += "### Verified Facts (DuckDuckGo RAG)\n"
+        facts = dossier.get("facts", [])
+        if not facts or (len(facts) == 1 and (isinstance(facts[0], dict) and facts[0].get("fact") == "NOT FOUND" or facts[0] == "NOT FOUND")):
+            md_text += "**[NOT FOUND]** No verified public web facts were discovered.\n"
+        else:
+            for f in facts:
+                if isinstance(f, dict):
+                    md_text += f"- **{f.get('fact', '')}**\n  [Source Link]({f.get('source_url', '')})\n"
+                else:
+                    md_text += f"- {f}\n"
+
         md_text += "\n### Role Priorities & Strategic Focus\n"
         for rp in dossier.get("role_priorities", []):
             md_text += f"- {rp}\n"
-        md_text += "\n### Tailored Conversation Hooks\n"
-        for hook in dossier.get("tailored_hooks", []):
-            md_text += f"- {hook}\n"
-        
-        sources = dossier.get("sources", [])
-        if sources:
-            md_text += "\n### Sources & Citations\n"
-            for s in sources:
-                md_text += f"- [{s.get('id')}] [{s.get('title')}]({s.get('url')})\n"
+
+        if dossier.get("tailored_hooks") and dossier["tailored_hooks"][0] != "NOT FOUND":
+            md_text += "\n### Tailored Outreach Angles\n"
+            for hook in dossier.get("tailored_hooks", []):
+                md_text += f"- {hook}\n"
 
         console.print(Panel(Markdown(md_text), title="🔍 Research Dossier & RAG Context", border_style="cyan"))
 
@@ -115,12 +132,17 @@ def show_lead_details(db: Database, lead_id: int):
     if touches:
         console.print("\n[bold]Outreach Sequence Touches:[/bold]")
         for t in touches:
+            is_awaiting = (t["status"] == "AWAITING_APPROVAL")
+            status_label = "[bold yellow]Draft - Awaiting Approval[/bold yellow]" if is_awaiting else "[bold green]SENT (Simulated)[/bold green]"
+            approval_prompt = f"\n\n[bold green]👉 To approve and dispatch: type 'approve {t['id']}'[/bold green]" if is_awaiting else ""
+
             console.print(Panel(
                 f"[bold cyan]Subject:[/bold cyan] {t.get('subject') or '(No Subject / LinkedIn)'}\n\n"
                 f"{t['content']}\n\n"
-                f"[dim]Evidence Grounded:[/dim] [yellow]{t.get('researched_evidence_used', 'N/A')}[/yellow]",
-                title=f"Touch #{t['touch_number']} [{t['channel'].upper()}] - Status: {t['status']}",
-                border_style="blue"
+                f"[dim]Evidence Grounded:[/dim] [yellow]{t.get('researched_evidence_used', 'N/A')}[/yellow]"
+                f"{approval_prompt}",
+                title=f"Touch #{t['touch_number']} [{t['channel'].upper()}] - {status_label} (Touch ID: #{t['id']})",
+                border_style="yellow" if is_awaiting else "green"
             ))
 
     # Replies
@@ -144,8 +166,8 @@ def show_decision_logs(db: Database, lead_id: int):
 
     table = Table(title=f"Audit & Reasoning Decision Logs (Lead #{lead_id})", show_lines=True)
     table.add_column("Timestamp", style="dim", width=18)
-    table.add_column("Stage", style="cyan", width=14)
-    table.add_column("Decision", style="bold yellow", width=22)
+    table.add_column("Stage", style="cyan", width=16)
+    table.add_column("Decision", style="bold yellow", width=26)
     table.add_column("Reasoning & Thought Process", style="white")
 
     for log in logs:
@@ -157,6 +179,51 @@ def show_decision_logs(db: Database, lead_id: int):
         )
 
     console.print(table)
+
+def handle_settings(db: Database):
+    current = db.get_product_settings()
+    console.print(Panel(
+        f"[bold]1. Product Name:[/bold] {current.get('product_name')}\n"
+        f"[bold]2. What It Does:[/bold] {current.get('what_it_does')}\n"
+        f"[bold]3. Sender Name:[/bold] {current.get('sender_name')}\n"
+        f"[bold]4. Company Name:[/bold] {current.get('company_name')}\n"
+        f"[bold]5. Meeting Link:[/bold] {current.get('calendly_link') or '(none)'}",
+        title="Current 'My Product' Settings",
+        border_style="cyan"
+    ))
+
+    choice = Prompt.ask("Do you want to edit these settings? (y/n)", choices=["y", "n"], default="n")
+    if choice == "y":
+        p_name = Prompt.ask("Product Name", default=current.get("product_name"))
+        w_does = Prompt.ask("What Product Does", default=current.get("what_it_does"))
+        s_name = Prompt.ask("Your Name (Sender)", default=current.get("sender_name"))
+        c_name = Prompt.ask("Your Company Name", default=current.get("company_name"))
+        cal = Prompt.ask("Meeting Link", default=current.get("calendly_link", ""))
+
+        db.save_product_settings({
+            "product_name": p_name,
+            "what_it_does": w_does,
+            "sender_name": s_name,
+            "company_name": c_name,
+            "calendly_link": cal
+        })
+        console.print("[bold green]✔ Settings saved successfully! Every future email will use ONLY these details.[/bold green]")
+
+def handle_demo_lead(orchestrator: OutreachOrchestrator, db: Database):
+    console.print("[bold cyan]Choose a pre-configured offline demo lead:[/bold cyan]")
+    console.print("  [1] [bold green]Startup Founder[/bold green]: Alex Rivera (Founder & CEO @ KiteFlow AI - DevTools & AI)")
+    console.print("  [2] [bold green]HR Head[/bold green]: Maya Patel (Chief People Officer @ Lumina Health - HealthTech)")
+    console.print("  [3] [bold green]Chief Technology Officer[/bold green]: Marcus Sterling (CTO @ Apex Payments - Fintech)")
+
+    choice = Prompt.ask("Select (1/2/3)", choices=["1", "2", "3"], default="1")
+    type_map = {"1": "founder", "2": "hr", "3": "cto"}
+    demo_type = type_map[choice]
+
+    with console.status(f"[bold green]Loading realistic demo lead with verified facts & drafting Touch #1..."):
+        res = orchestrator.load_demo_lead(demo_type)
+
+    console.print(f"[bold green]✔ Demo lead loaded successfully! (Lead ID: #{res['lead_id']})[/bold green]")
+    show_lead_details(db, res["lead_id"])
 
 def main():
     print_banner()
@@ -179,6 +246,53 @@ def main():
                 console.print("[dim]Goodbye![/dim]")
                 sys.exit(0)
 
+            elif action in ["help", "h", "?", "--help"]:
+                console.print(Panel(
+                    "[bold cyan]Available Terminal Commands:[/bold cyan]\n\n"
+                    "  [bold green]demo[/bold green]\n"
+                    "      Load 1 of 3 realistic offline demo leads (Founder, HR Head, CTO)\n\n"
+                    "  [bold green]approve <touch_id>[/bold green]\n"
+                    "      Approve & Send a drafted touchpoint (Human-in-the-loop)\n\n"
+                    "  [bold green]settings[/bold green]\n"
+                    "      View and update 'My Product' settings (product name, description, sender)\n\n"
+                    "  [bold green]research <Name> at <Company>, <Role>[/bold green]\n"
+                    "      Quick research & launch (e.g. 'research Jensen Huang at NVIDIA, CEO')\n\n"
+                    "  [bold green]add[/bold green]\n"
+                    "      Interactive wizard to prospect and research a new lead\n\n"
+                    "  [bold green]leads[/bold green] (or [bold green]list[/bold green])\n"
+                    "      Show all leads and their pipeline state machine status\n\n"
+                    "  [bold green]show <id>[/bold green]\n"
+                    "      Inspect a lead's DuckDuckGo RAG dossier, touches, and replies\n\n"
+                    "  [bold green]reply <id>[/bold green]\n"
+                    "      Simulate an inbound prospect reply (test Interested, Objection, OOO)\n\n"
+                    "  [bold green]advance <id>[/bold green]\n"
+                    "      Advance sequence cadence (simulates no-reply timeout)\n\n"
+                    "  [bold green]logs <id>[/bold green]\n"
+                    "      Display transparent reasoning and autonomous decision logs\n\n"
+                    "  [bold green]models[/bold green]\n"
+                    "      Check local Ollama server connection and installed models",
+                    title="Agent Command Quick Reference",
+                    border_style="cyan"
+                ))
+
+            elif action in ["demo", "demolead", "demo-lead"]:
+                handle_demo_lead(orchestrator, db)
+
+            elif action in ["settings", "config"]:
+                handle_settings(db)
+
+            elif action in ["approve", "send"]:
+                if not arg.isdigit():
+                    console.print("[red]Usage: approve <touch_id>[/red]")
+                    continue
+                touch_id = int(arg)
+                try:
+                    res = orchestrator.approve_and_send(touch_id)
+                    console.print(f"[bold green]✔ Touch #{touch_id} approved and dispatched (simulated)![/bold green]")
+                    console.print(f"Lead #{res['lead_id']} status updated to: [blue]IN_SEQUENCE[/blue] (Touch #{res['touch_number']}/4)")
+                except Exception as e:
+                    console.print(f"[red]Approval failed: {e}[/red]")
+
             elif action in ["leads", "list"]:
                 display_leads(db)
 
@@ -194,6 +308,29 @@ def main():
                     continue
                 show_decision_logs(db, int(arg))
 
+            elif action in ["research", "prospect"] or (action == "add" and " at " in arg):
+                import re
+                m = re.search(r"(?:research|prospect|add)?\s*([A-Za-z\s]+?)\s+at\s+([A-Za-z0-9\s]+?)(?:,\s*([A-Za-z0-9\s]+))?$", cmd, re.IGNORECASE)
+                if m:
+                    p_name = m.group(1).strip()
+                    p_comp = m.group(2).strip()
+                    p_role = m.group(3).strip() if m.group(3) else "Executive"
+                    email = f"{p_name.lower().replace(' ', '.')}@{p_comp.lower().replace(' ', '')}.com"
+
+                    console.print(f"[bold cyan]Initiating Autonomous Pipeline for {p_name} at {p_comp} ({p_role})...[/bold cyan]")
+                    with console.status(f"[bold green]DuckDuckGo search + RAG scoring + Sequence Drafting..."):
+                        result = orchestrator.onboard_and_launch_lead(
+                            name=p_name,
+                            company=p_comp,
+                            role=p_role,
+                            email=email,
+                            industry="Technology"
+                        )
+                    console.print(f"[bold green]✔ Lead onboarded and Touch #1 drafted (Awaiting Approval)![/bold green] (Lead ID: {result['lead_id']})")
+                    show_lead_details(db, result["lead_id"])
+                else:
+                    console.print("[yellow]Could not parse name and company. Format: 'research <Name> at <Company>, <Role>' or use 'add'[/yellow]")
+
             elif action == "add":
                 console.print("[bold cyan]Enter Lead Details for Research & Outreach:[/bold cyan]")
                 name = Prompt.ask("Prospect Full Name").strip()
@@ -203,7 +340,6 @@ def main():
                 industry = Prompt.ask("Industry (e.g. SaaS, Fintech, AI)", default="Technology")
 
                 with console.status(f"[bold green]Running Multi-Agent Pipeline for {name} at {company}..."):
-                    console.print("  [1/4] Research Agent: DuckDuckGo search + RAG scoring...")
                     result = orchestrator.onboard_and_launch_lead(
                         name=name,
                         company=company,
@@ -212,7 +348,7 @@ def main():
                         industry=industry
                     )
 
-                console.print(f"[bold green]✔ Lead onboarded and Touch #1 dispatched![/bold green] (Lead ID: {result['lead_id']})")
+                console.print(f"[bold green]✔ Lead onboarded and Touch #1 drafted (Awaiting Approval)![/bold green] (Lead ID: {result['lead_id']})")
                 show_lead_details(db, result["lead_id"])
 
             elif action == "reply":
@@ -227,9 +363,9 @@ def main():
 
                 console.print(f"[cyan]Simulate prospect reply for {lead['name']} ({lead['company']})[/cyan]")
                 console.print("[dim]Example responses you can test:[/dim]")
-                console.print("  1. 'Hey Alex, this is interesting. Can you send over a demo link or calendar?' [INTERESTED]")
+                console.print("  1. 'Hey, this is interesting. Can you send over a demo link or calendar?' [INTERESTED]")
                 console.print("  2. 'Please remove me from your list. Not interested.' [NOT_INTERESTED]")
-                console.print("  3. 'We already use Outreach and Apollo, so we are good for now.' [OBJECTION]")
+                console.print("  3. 'We already use a competitor, so we are good for now.' [OBJECTION]")
                 console.print("  4. 'I am out of the office until October 28th with limited email access.' [OUT_OF_OFFICE]")
                 
                 reply_text = Prompt.ask("Inbound Reply Text")
@@ -247,9 +383,10 @@ def main():
                 if res.get("next_touch_draft"):
                     nxt = res["next_touch_draft"]
                     console.print(Panel(
-                        f"[bold]Subject:[/bold] {nxt.get('subject')}\n\n{nxt['content']}",
-                        title=f"Autonomous Follow-up Touch Drafted & Sent",
-                        border_style="green"
+                        f"[bold]Subject:[/bold] {nxt.get('subject')}\n\n{nxt['content']}\n\n"
+                        f"[bold green]👉 Status: Draft - Awaiting Approval. Run 'approve {nxt['touch_id']}' to send.[/bold green]",
+                        title=f"Autonomous Follow-up Touch Drafted",
+                        border_style="yellow"
                     ))
 
             elif action == "advance":
@@ -265,9 +402,10 @@ def main():
                 if res.get("next_touch_draft"):
                     nxt = res["next_touch_draft"]
                     console.print(Panel(
-                        f"[bold]Subject:[/bold] {nxt.get('subject')}\n\n{nxt['content']}",
+                        f"[bold]Subject:[/bold] {nxt.get('subject')}\n\n{nxt['content']}\n\n"
+                        f"[bold green]👉 Status: Draft - Awaiting Approval. Run 'approve {nxt['touch_id']}' to send.[/bold green]",
                         title="Next Cadence Touch Generated",
-                        border_style="cyan"
+                        border_style="yellow"
                     ))
 
             elif action == "models":
@@ -289,7 +427,7 @@ def main():
                     console.print(Panel(response, title="Agent Response", border_style="cyan"))
                 except Exception as e:
                     console.print(f"[red]Could not query Ollama: {e}[/red]")
-                    console.print("[dim]Use commands like 'add', 'leads', 'show 1', 'reply 1'[/dim]")
+                    console.print("[dim]Use commands like 'demo', 'add', 'leads', 'show 1', 'approve 1', 'reply 1'[/dim]")
 
         except KeyboardInterrupt:
             console.print("\n[dim]Exiting...[/dim]")

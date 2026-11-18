@@ -4,6 +4,150 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from sales_agent.config import config
 
+DEMO_LEADS_DATA = {
+    "founder": {
+        "name": "Alex Rivera",
+        "company": "KiteFlow AI",
+        "role": "Founder & CEO",
+        "email": "alex@kiteflow.ai",
+        "industry": "Developer Tools & AI",
+        "dossier": {
+            "company_overview": "KiteFlow AI builds autonomous QA and regression testing agents for high-velocity software engineering teams.",
+            "search_status": "DEMO_REALISTIC_CONTEXT",
+            "search_warning": None,
+            "facts": [
+                {
+                    "fact": "Raised $4.2M Seed funding led by Amplify Partners in January 2025 to scale autonomous test execution.",
+                    "source_url": "https://techcrunch.com/2025/01/kiteflow-seed",
+                    "source_title": "TechCrunch: KiteFlow AI Secures $4.2M Seed"
+                },
+                {
+                    "fact": "Surpassed 12,000 GitHub stars and 50 enterprise pilots within 4 months of releasing their open-source SDK.",
+                    "source_url": "https://github.com/kiteflow-ai/agent-sdk",
+                    "source_title": "GitHub: KiteFlow Open Source Agent SDK"
+                },
+                {
+                    "fact": "Keynote speaker at AI Engineer World's Fair on multi-agent test evaluation and deterministic LLM CI/CD.",
+                    "source_url": "https://ai.engineer/talks/alex-rivera",
+                    "source_title": "AI Engineer World's Fair 2025 Session Roster"
+                },
+                {
+                    "fact": "Currently expanding founding engineering and solutions architecture teams in San Francisco and remotely.",
+                    "source_url": "https://kiteflow.ai/careers",
+                    "source_title": "KiteFlow AI Careers Portal"
+                }
+            ],
+            "role_priorities": [
+                "Acquiring high-intent engineering leads and enterprise design partners.",
+                "Balancing product engineering roadmap with founder-led sales outreach."
+            ],
+            "potential_pain_points": [
+                "Limited bandwidth to manually personalize outreach to prospective CTOs and VP Eng prospects.",
+                "High noise-to-signal ratio from generic cold inbound."
+            ],
+            "tailored_hooks": [
+                "Congratulating on the $4.2M Amplify Partners seed round and explosive GitHub momentum.",
+                "Connecting on scaling outbound enterprise developer relationships without hiring an army of SDRs."
+            ],
+            "confidence_score": 0.95
+        }
+    },
+    "hr": {
+        "name": "Maya Patel",
+        "company": "Lumina Health",
+        "role": "Chief People Officer",
+        "email": "maya.patel@luminahealth.com",
+        "industry": "HealthTech & Digital Health",
+        "dossier": {
+            "company_overview": "Lumina Health provides digital healthcare operations and tele-health infrastructure across hospitals and clinics.",
+            "search_status": "DEMO_REALISTIC_CONTEXT",
+            "search_warning": None,
+            "facts": [
+                {
+                    "fact": "Scaled distributed organization from 140 to 380 employees across 12 countries over the past 14 months.",
+                    "source_url": "https://luminahealth.com/press/global-growth",
+                    "source_title": "Lumina Press: Scaling Global Workforce"
+                },
+                {
+                    "fact": "Named among Top 50 Healthcare HR Leaders 2024 for pioneering transparent remote compensation and mobility tracks.",
+                    "source_url": "https://healthcare-executive.org/top-hr-leaders",
+                    "source_title": "Healthcare Executive: 2024 HR Leaders"
+                },
+                {
+                    "fact": "Partnered with premier medical networks to launch clinician wellness and retention programs.",
+                    "source_url": "https://luminahealth.com/news/clinical-partnerships",
+                    "source_title": "Lumina Health Newsroom"
+                },
+                {
+                    "fact": "Rolling out unified engineering and clinical hiring standards for upcoming Q3 expansion.",
+                    "source_url": "https://linkedin.com/pulse/lumina-talent-scaling",
+                    "source_title": "LinkedIn Pulse: Talent Scaling at Lumina"
+                }
+            ],
+            "role_priorities": [
+                "Accelerating technical and clinical recruitment while maintaining high hiring bar.",
+                "Reducing recruiter manual workload and improving candidate outreach conversion."
+            ],
+            "potential_pain_points": [
+                "Recruiters spending hours writing repetitive cold candidate emails.",
+                "Maintaining authentic communication at rapid scale."
+            ],
+            "tailored_hooks": [
+                "Acknowledging the recent 140 to 380 employee scaling milestone.",
+                "Discussing how automated yet authentic outreach reduces recruiter coordination fatigue."
+            ],
+            "confidence_score": 0.95
+        }
+    },
+    "cto": {
+        "name": "Marcus Sterling",
+        "company": "Apex Payments",
+        "role": "Chief Technology Officer",
+        "email": "marcus.sterling@apexpayments.io",
+        "industry": "Fintech & Payments Infrastructure",
+        "dossier": {
+            "company_overview": "Apex Payments builds high-throughput, low-latency transaction processing APIs and multi-currency ledgers.",
+            "search_status": "DEMO_REALISTIC_CONTEXT",
+            "search_warning": None,
+            "facts": [
+                {
+                    "fact": "Completed zero-downtime multi-region cloud migration processing 45M daily transactions at sub-15ms latency.",
+                    "source_url": "https://apexpayments.io/engineering/ledger-architecture",
+                    "source_title": "Apex Engineering Blog: Zero Downtime Ledger"
+                },
+                {
+                    "fact": "Achieved Level 1 PCI-DSS and SOC 2 Type II re-certification across AWS and GCP infrastructure.",
+                    "source_url": "https://apexpayments.io/security/compliance-2025",
+                    "source_title": "Apex Security & Compliance Report"
+                },
+                {
+                    "fact": "Open-sourced high-throughput event streaming connector for Kafka and Apache Flink with over 2,000 forks.",
+                    "source_url": "https://github.com/apexpayments/flink-kafka-connector",
+                    "source_title": "GitHub: Apex Flink Kafka Connector"
+                },
+                {
+                    "fact": "Announced direct settlement API integration with major international banking rails.",
+                    "source_url": "https://fintechnews.com/apex-stripe-integration",
+                    "source_title": "FinTech News: Apex Payments International Rail Expansion"
+                }
+            ],
+            "role_priorities": [
+                "Ensuring 99.999% system uptime and sub-15ms transaction execution under high load.",
+                "Automating infrastructure operations and evaluating mission-critical technology partners."
+            ],
+            "potential_pain_points": [
+                "Inundated with generic, spammy sales emails that show zero understanding of payments architecture.",
+                "Strict compliance and vendor vetting requirements."
+            ],
+            "tailored_hooks": [
+                "Commending their zero-downtime ledger migration architecture.",
+                "Reaching out with zero fluff, acknowledging their 45M daily transaction scale."
+            ],
+            "confidence_score": 0.95
+        }
+    }
+}
+
 class Database:
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or config.db_path
@@ -18,6 +162,14 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
+            # Settings Table for "My Product"
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+            """)
+
             # Leads Table
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS leads (
@@ -37,7 +189,7 @@ class Database:
             )
             """)
 
-            # Sequence Touches Table
+            # Sequence Touches Table (default AWAITING_APPROVAL)
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS touches (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,7 +199,7 @@ class Database:
                 subject TEXT,
                 content TEXT NOT NULL,
                 researched_evidence_used TEXT,
-                status TEXT DEFAULT 'DRAFTED',
+                status TEXT DEFAULT 'AWAITING_APPROVAL',
                 sent_at TEXT,
                 created_at TEXT,
                 FOREIGN KEY (lead_id) REFERENCES leads (id)
@@ -83,6 +235,43 @@ class Database:
                 FOREIGN KEY (lead_id) REFERENCES leads (id)
             )
             """)
+
+            # Set default product settings if not existing
+            cursor.execute("SELECT COUNT(*) FROM settings")
+            if cursor.fetchone()[0] == 0:
+                defaults = [
+                    ("product_name", "OutreachIQ"),
+                    ("what_it_does", "AI assistant that researches enterprise leads and drafts personalized multi-touch sequences"),
+                    ("sender_name", "Alex Rivera"),
+                    ("company_name", "NextGen Solutions"),
+                    ("calendly_link", "https://cal.com/nextgen/demo")
+                ]
+                cursor.executemany("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", defaults)
+
+            conn.commit()
+
+    # Product Settings operations
+    def get_product_settings(self) -> Dict[str, str]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT key, value FROM settings")
+            rows = cursor.fetchall()
+            settings = {
+                "product_name": "OutreachIQ",
+                "what_it_does": "AI assistant that researches enterprise leads and drafts personalized multi-touch sequences",
+                "sender_name": "Alex Rivera",
+                "company_name": "NextGen Solutions",
+                "calendly_link": ""
+            }
+            for row in rows:
+                settings[row["key"]] = row["value"]
+            return settings
+
+    def save_product_settings(self, settings: Dict[str, str]):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            for k, v in settings.items():
+                cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (k, str(v or "")))
             conn.commit()
 
     # Lead operations
@@ -152,7 +341,7 @@ class Database:
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE leads 
-                SET research_dossier = ?, status = 'RESEARCHED', updated_at = ?
+                SET research_dossier = ?, status = 'DRAFT_PENDING', updated_at = ?
                 WHERE id = ?
             """, (json.dumps(dossier, ensure_ascii=False), now, lead_id))
             conn.commit()
@@ -164,19 +353,54 @@ class Database:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO touches (lead_id, touch_number, channel, subject, content, researched_evidence_used, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'DRAFTED', ?)
+                VALUES (?, ?, ?, ?, ?, ?, 'AWAITING_APPROVAL', ?)
             """, (lead_id, touch_number, channel, subject, content, evidence, now))
             conn.commit()
             return cursor.lastrowid
 
-    def mark_touch_sent(self, touch_id: int):
+    def approve_and_send_touch(self, touch_id: int) -> Dict[str, Any]:
+        """Human approval action: marks touch as SENT and advances lead state."""
         now = datetime.utcnow().isoformat()
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            cursor.execute("SELECT * FROM touches WHERE id = ?", (touch_id,))
+            touch_row = cursor.fetchone()
+            if not touch_row:
+                raise ValueError(f"Touch #{touch_id} not found.")
+            touch = dict(touch_row)
+
+            # Update touch status
             cursor.execute("""
                 UPDATE touches SET status = 'SENT', sent_at = ? WHERE id = ?
             """, (now, touch_id))
+
+            # Update lead state
+            cursor.execute("""
+                UPDATE leads SET status = 'IN_SEQUENCE', current_touch = ?, updated_at = ? WHERE id = ?
+            """, (touch["touch_number"], now, touch["lead_id"]))
+
             conn.commit()
+
+            touch["status"] = "SENT"
+            touch["sent_at"] = now
+
+        # Log human approval in audit logs
+        self.log_decision(
+            lead_id=touch["lead_id"],
+            stage="APPROVAL",
+            decision="TOUCH_APPROVED_AND_SENT",
+            reasoning=f"Human user approved Touch #{touch['touch_number']} ({touch['channel'].upper()}). Simulated dispatch recorded.",
+            metadata={"touch_id": touch_id, "subject": touch.get("subject", "")}
+        )
+
+        return touch
+
+    def get_touch(self, touch_id: int) -> Optional[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM touches WHERE id = ?", (touch_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
 
     def get_touches_for_lead(self, lead_id: int) -> List[Dict[str, Any]]:
         with self.get_connection() as conn:
@@ -232,3 +456,16 @@ class Database:
                         pass
                 logs.append(item)
             return logs
+
+    # Demo lead creation
+    def create_demo_lead(self, demo_type: str = "founder") -> int:
+        demo = DEMO_LEADS_DATA.get(demo_type.lower()) or DEMO_LEADS_DATA["founder"]
+        lead_id = self.create_lead(
+            name=demo["name"],
+            company=demo["company"],
+            role=demo["role"],
+            email=demo["email"],
+            industry=demo["industry"]
+        )
+        self.save_research_dossier(lead_id, demo["dossier"])
+        return lead_id
