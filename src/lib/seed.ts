@@ -59,8 +59,10 @@ export function ensureSeed(): boolean {
   );
   // Briefs and hooks are intentionally NOT seeded: the research agent builds them
   // on the first pipeline run so the demo shows research happening.
+  // Deterministic IDs: seeded leads must be addressable from any serverless
+  // instance, otherwise deep links 404 when the request lands on a fresh instance.
   for (const k of KB) {
-    const leadId = uid("lead");
+    const leadId = `lead_${k.slug}`;
     insLead.run(leadId, k.name, k.role, k.company, k.email, k.linkedin, k.persona, now, now);
   }
 
