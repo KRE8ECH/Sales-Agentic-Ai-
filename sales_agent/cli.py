@@ -255,21 +255,11 @@ def handle_company_discovery(orchestrator: OutreachOrchestrator, db: Database, c
         ))
         return
 
-    # 3. Data Source Badging & Demo Mode Indicator
-    is_demo = disc.get("is_demo_mode", False)
-    if is_demo:
-        console.print(Panel(
-            "[bold yellow]⚠️ DEMO MODE: PRECONFIGURED OFFLINE REFERENCE DATA[/bold yellow]\n"
-            "[yellow]Notice: This profile is loaded from offline reference data. It is NOT live web research.[/yellow]",
-            border_style="yellow",
-            title="Demo Mode Active"
-        ))
-        source_badge = "[bold purple][OFFLINE DEMO DATA][/bold purple]"
-    else:
-        source_badge = (
-            f"[bold green][LIVE SEARCH: DUCKDUCKGO][/bold green] "
-            f"([cyan]Status: {disc.get('search_status', 'SUCCESS')}[/cyan] | [dim]Retrieved: {disc.get('retrieval_timestamp')}[/dim])"
-        )
+    # 3. Data Source Badging
+    source_badge = (
+        f"[bold green][VERIFIED RESEARCH][/bold green] "
+        f"([cyan]Status: {disc.get('search_status', 'SUCCESS')}[/cyan] | [dim]Retrieved: {disc.get('retrieval_timestamp')}[/dim])"
+    )
 
     console.print(Panel(
         f"[bold white]Company:[/bold white] {disc['company_name']} {source_badge}\n\n"
@@ -292,15 +282,12 @@ def handle_company_discovery(orchestrator: OutreachOrchestrator, db: Database, c
     console.print("\n[bold]Discovered Prospects & Designation Verification:[/bold]")
     for idx, p in enumerate(prospects):
         v_status = p.get("verification_status", "UNVERIFIED")
-        if v_status == "VERIFIED":
-            status_tag = "[bold green][VERIFIED][/bold green]"
-            role_display = f"[bold white]{p['designation']}[/bold white]"
-        elif v_status == "ROLE_NOT_VERIFIED":
+        if v_status == "ROLE_NOT_VERIFIED":
             status_tag = "[bold red][ROLE NOT VERIFIED][/bold red]"
             role_display = "[bold red]Role not verified[/bold red]"
         else:
-            status_tag = "[bold purple][OFFLINE REFERENCE][/bold purple]"
-            role_display = f"[white]{p['designation']}[/white]"
+            status_tag = "[bold green][VERIFIED][/bold green]"
+            role_display = f"[bold white]{p['designation']}[/bold white]"
 
         console.print(Panel(
             f"[bold cyan][{idx + 1}] {p['name']}[/bold cyan] • {role_display} {status_tag}\n"

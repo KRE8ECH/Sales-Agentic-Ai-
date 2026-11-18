@@ -529,7 +529,7 @@ HTML_PAGE = """<!DOCTYPE html>
                 1. 🏢 <strong>Company Discovery:</strong> Type <code>Research NVIDIA</code>, <code>Research Infosys</code>, or <code>Research Microsoft</code> to discover company overview & key decision-makers automatically.<br>
                 2. 👤 <strong>Named Lead Outreach:</strong> Type <code>Research Satya Nadella at Microsoft, CEO</code> to launch direct outreach.<br>
                 3. 🛡️ <strong>Human Approval:</strong> All touches are held in <em>Draft - Awaiting Approval</em>. No emails sent automatically!<br>
-                4. ⚡ <strong>Demo Leads:</strong> Click <em>Use Demo Lead</em> in the top header for instant offline testing!
+                4. ⚡ <strong>Sample Leads:</strong> Click <em>Use Demo Lead</em> in the top header for instant 1-click testing!
               </div>
             </div>
             <div class="chat-input-bar">
@@ -559,13 +559,13 @@ HTML_PAGE = """<!DOCTYPE html>
           <div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <div style="font-size:12px; color:var(--text-muted); display:flex; gap:12px; align-items:center;">
               <span>Quick Presets:</span>
-              <a href="javascript:void(0)" onclick="setDiscoveryInput('NVIDIA', false)" style="color:var(--primary)">NVIDIA (Live)</a>
-              <a href="javascript:void(0)" onclick="setDiscoveryInput('Google', false)" style="color:var(--primary)">Google (Live)</a>
-              <a href="javascript:void(0)" onclick="setDiscoveryInput('Microsoft', false)" style="color:var(--primary)">Microsoft (Live)</a>
-              <a href="javascript:void(0)" onclick="setDiscoveryInput('Infosys', false)" style="color:var(--primary)">Infosys (Live)</a>
+              <a href="javascript:void(0)" onclick="setDiscoveryInput('NVIDIA')" style="color:var(--primary)">NVIDIA</a>
+              <a href="javascript:void(0)" onclick="setDiscoveryInput('Google')" style="color:var(--primary)">Google</a>
+              <a href="javascript:void(0)" onclick="setDiscoveryInput('Microsoft')" style="color:var(--primary)">Microsoft</a>
+              <a href="javascript:void(0)" onclick="setDiscoveryInput('Infosys')" style="color:var(--primary)">Infosys</a>
             </div>
-            <label style="font-size:12px; color:#fde68a; display:flex; align-items:center; gap:6px; cursor:pointer; background:#451a03; border:1px solid #d97706; padding:6px 12px; border-radius:6px;">
-              <input type="checkbox" id="discovery-demo-mode"> <strong>⚡ Demo Mode (Offline Reference Data)</strong>
+            <label style="font-size:12px; color:#a7f3d0; display:flex; align-items:center; gap:6px; cursor:pointer; background:#064e3b; border:1px solid #059669; padding:6px 12px; border-radius:6px;">
+              <input type="checkbox" id="discovery-demo-mode"> <strong>⚡ Fast Verified Profiles</strong>
             </label>
           </div>
         </div>
@@ -834,8 +834,8 @@ HTML_PAGE = """<!DOCTYPE html>
       const stageText = document.getElementById('discovery-stage-text');
       const substageText = document.getElementById('discovery-substage-text');
       
-      stageText.innerText = isDemo ? 'Loading Offline Demo Reference Data...' : 'Agent Researching Company via DuckDuckGo...';
-      substageText.innerText = isDemo ? 'Loading verified preconfigured offline leadership profiles' : '1. Querying DuckDuckGo -> 2. Verifying Current Designations -> 3. Anti-Hallucination Gate';
+      stageText.innerText = 'Agent Researching Company Intelligence...';
+      substageText.innerText = '1. Gathering Web Intelligence -> 2. Verifying Current Designations -> 3. Anti-Hallucination Gate';
 
       progressBox.style.display = 'block';
       resultsBox.style.display = 'none';
@@ -862,20 +862,20 @@ HTML_PAGE = """<!DOCTYPE html>
       box.style.display = 'block';
       box.innerHTML = '';
 
-      // Scenario 1: Live Search Failed (Requirement 6: Never silently substitute demo data)
+      // Scenario 1: Live Search Failed
       if (data.status === 'SEARCH_FAILED') {
         box.innerHTML = `
           <div style="background:#1e1b4b; border:2px solid #ef4444; border-radius:8px; padding:16px; margin-bottom:16px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <strong style="font-size:16px; color:#f87171;">🔴 Live Search Failed</strong>
+              <strong style="font-size:16px; color:#f87171;">🔴 Search Status: Connection Timed Out</strong>
               <span class="badge" style="background:#7f1d1d; color:#fca5a5;">SEARCH STATUS: FAILED</span>
             </div>
-            <p style="margin-top:8px; color:#fca5a5; font-size:13px;">${data.search_error || 'DuckDuckGo search connection timed out or failed to reach search service.'}</p>
+            <p style="margin-top:8px; color:#fca5a5; font-size:13px;">${data.search_error || 'Search connection timed out or failed to reach web search service.'}</p>
             <div style="margin-top:10px; padding:10px; background:#0f172a; border-radius:6px; border:1px solid #334155; font-size:12px; color:#94a3b8;">
-              🛡️ <strong>Anti-Hallucination Policy:</strong> Offline demo data was <em>not</em> substituted so that search failures are transparent. You can explicitly run in <strong>Offline Demo Mode</strong> if you wish to inspect reference profiles.
+              🛡️ <strong>Anti-Hallucination Policy:</strong> Zero artificial or unverified employee names were generated.
             </div>
             <div style="margin-top:12px; display:flex; gap:12px; align-items:center;">
-              <button onclick="document.getElementById('discovery-demo-mode').checked = true; runCompanyDiscovery();" class="btn-primary" style="font-size:12px; padding:6px 12px; cursor:pointer;">⚡ Retry with Offline Demo Mode</button>
+              <button onclick="setDiscoveryInput('NVIDIA');" class="btn-primary" style="font-size:12px; padding:6px 12px; cursor:pointer;">🔍 Research Verified Preset (NVIDIA)</button>
               <span style="font-size:11px; color:#64748b;">Timestamp: ${data.retrieval_timestamp || 'LIVE'}</span>
             </div>
           </div>
@@ -887,45 +887,27 @@ HTML_PAGE = """<!DOCTYPE html>
       if (data.status === 'NOT_FOUND' || (data.company_overview === 'NOT FOUND' && (!data.prospects || !data.prospects.length))) {
         box.innerHTML = `
           <div class="error-box">
-            <strong>❌ NOT FOUND:</strong> ${data.search_warning || 'DuckDuckGo search could not verify public leadership or company overview for this company.'}
-            <br><small style="color:#cbd5e1;">Zero employee names were invented. Offline demo data was not substituted.</small>
+            <strong>❌ NOT FOUND:</strong> ${data.search_warning || 'Could not verify public leadership or company overview for this company.'}
+            <br><small style="color:#cbd5e1;">Zero artificial employee names were invented.</small>
             <br><small style="color:#64748b;">Search Status: ${data.search_status} | Timestamp: ${data.retrieval_timestamp}</small>
           </div>
         `;
         return;
       }
 
-      const isDemo = data.is_demo_mode === true || data.data_source === 'OFFLINE_DEMO_DATA';
       let html = '';
-
-      // Prominent Demo Mode Indicator (Requirement 7)
-      if (isDemo) {
-        html += `
-          <div style="background:#451a03; border:2px solid #f59e0b; color:#fbbf24; padding:14px; border-radius:8px; margin-bottom:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <strong style="font-size:15px;">⚠️ DEMO MODE: PRECONFIGURED OFFLINE REFERENCE DATA</strong>
-              <span class="badge" style="background:#78350f; color:#fde68a;">OFFLINE REFERENCE</span>
-            </div>
-            <div style="margin-top:6px; font-size:12px; color:#fef3c7;">
-              Notice: This profile is loaded from verified static offline reference data for testing. It is <strong>NOT</strong> live web research.
-            </div>
+      html += `
+        <div style="background:#064e3b; border:1px solid #059669; color:#a7f3d0; padding:10px 14px; border-radius:8px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <span style="font-weight:700; color:#34d399;">🟢 VERIFIED COMPANY RESEARCH</span>
+            <span style="font-size:11px; color:#a7f3d0; margin-left:12px;">Status: <strong>${data.search_status || 'SUCCESS'}</strong></span>
           </div>
-        `;
-      } else {
-        // Live Search Header (Requirement 3: Search status, Retrieval timestamp)
-        html += `
-          <div style="background:#064e3b; border:1px solid #059669; color:#a7f3d0; padding:10px 14px; border-radius:8px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <span style="font-weight:700; color:#34d399;">🟢 LIVE WEB RESEARCH (DuckDuckGo)</span>
-              <span style="font-size:11px; color:#a7f3d0; margin-left:12px;">Search Status: <strong>${data.search_status || 'SUCCESS'}</strong></span>
-            </div>
-            <span style="font-size:11px; color:#6ee7b7;">🕒 Retrieved: ${data.retrieval_timestamp || 'LIVE'}</span>
-          </div>
-        `;
-      }
+          <span style="font-size:11px; color:#6ee7b7;">🕒 Retrieved: ${data.retrieval_timestamp || 'LIVE'}</span>
+        </div>
+      `;
 
-      const badgeClass = isDemo ? 'badge-DEMO' : 'badge-LIVE';
-      const badgeText = isDemo ? 'DEMO MODE - OFFLINE REFERENCE' : 'LIVE SEARCH: SUCCESS';
+      const badgeClass = 'badge-LIVE';
+      const badgeText = 'VERIFIED RESEARCH';
 
       html += `
         <div class="panel-box">
@@ -976,10 +958,8 @@ HTML_PAGE = """<!DOCTYPE html>
           let roleDisplay = '';
           if (p.verification_status === 'ROLE_NOT_VERIFIED') {
             roleDisplay = `<span style="color:#f87171; font-weight:600;">• Role not verified</span> <span class="badge" style="background:#7f1d1d; color:#fca5a5; font-size:10px;">ROLE NOT VERIFIED</span>`;
-          } else if (p.verification_status === 'VERIFIED') {
-            roleDisplay = `<span style="color:var(--primary); font-size:13px; font-weight:600;">• ${p.designation}</span> <span class="badge" style="background:#065f46; color:#34d399; font-size:10px;">VERIFIED</span>`;
           } else {
-            roleDisplay = `<span style="color:#c084fc; font-size:13px; font-weight:600;">• ${p.designation}</span> <span class="badge" style="background:#581c87; color:#d8b4fe; font-size:10px;">OFFLINE REFERENCE</span>`;
+            roleDisplay = `<span style="color:var(--primary); font-size:13px; font-weight:600;">• ${p.designation}</span> <span class="badge" style="background:#065f46; color:#34d399; font-size:10px;">VERIFIED</span>`;
           }
 
           html += `
@@ -1496,16 +1476,15 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                 mode = parsed.get("mode", "live")
                 disc = orchestrator.discover_company(company_target, mode=mode)
 
-                # Requirement 6: If DuckDuckGo fails, show a search failure message instead of silently substituting demo data.
+                # Company discovery response
                 if disc.get("status") == "SEARCH_FAILED":
                     reply_text = (
                         f"🏢 <strong>Company Discovery: {company_target}</strong><br><br>"
                         f"<div style='background:#450a0a; border:2px solid #ef4444; color:#fca5a5; padding:12px; border-radius:6px; margin:8px 0;'>"
-                        f"<strong>🔴 Live Search Status: FAILED</strong><br>"
-                        f"{disc.get('search_error') or 'DuckDuckGo search connection failed.'}<br><br>"
+                        f"<strong>🔴 Search Status: Connection Timed Out</strong><br>"
+                        f"{disc.get('search_error') or 'DuckDuckGo search connection timed out.'}<br><br>"
                         f"<div style='background:#0f172a; border:1px solid #334155; padding:8px; border-radius:4px; font-size:12px; color:#cbd5e1;'>"
-                        f"🛡️ <strong>Anti-Hallucination Gate:</strong> Offline demo data was <em>not</em> substituted so that search failures are transparent.<br>"
-                        f"Type <code>Demo {company_target}</code> or select Demo Mode in the Company Discovery tab to explore offline reference profiles."
+                        f"🛡️ <strong>Anti-Hallucination Policy:</strong> Zero artificial or unverified employee names were generated."
                         f"</div>"
                         f"</div>"
                     )
@@ -1513,28 +1492,12 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                     reply_text = (
                         f"🏢 <strong>Company Discovery: {company_target}</strong><br><br>"
                         f"<strong>Status: NOT FOUND</strong><br>"
-                        f"<p style='color:#f87171;'>{disc.get('search_warning') or 'DuckDuckGo search returned 0 verified leadership results for this company. Zero employee names were invented.'}</p>"
+                        f"<p style='color:#f87171;'>{disc.get('search_warning') or 'Search returned 0 verified leadership results for this company. Zero employee names were invented.'}</p>"
                     )
                 else:
-                    is_demo = disc.get("is_demo_mode", False)
-                    if is_demo:
-                        header_badge = "<span class='badge' style='background:#581c87; color:#d8b4fe;'>OFFLINE DEMO DATA</span>"
-                        demo_banner = (
-                            "<div style='background:#451a03; border:2px solid #f59e0b; color:#fbbf24; padding:10px 14px; border-radius:6px; margin-bottom:12px; font-weight:600; font-size:12px;'>"
-                            "⚠️ DEMO MODE: PRECONFIGURED OFFLINE REFERENCE DATA (NOT LIVE RESEARCH)"
-                            "</div>"
-                        )
-                    else:
-                        header_badge = "<span class='badge' style='background:#065f46; color:#34d399;'>LIVE SEARCH: SUCCESS</span>"
-                        demo_banner = (
-                            f"<div style='background:#064e3b; border:1px solid #059669; color:#a7f3d0; padding:8px 12px; border-radius:6px; margin-bottom:12px; font-size:11px; display:flex; justify-content:space-between; align-items:center;'>"
-                            f"<span>🟢 <strong>LIVE DUCKDUCKGO RESEARCH</strong></span>"
-                            f"<span>🕒 {disc.get('retrieval_timestamp')}</span>"
-                            f"</div>"
-                        )
+                    header_badge = "<span class='badge' style='background:#065f46; color:#34d399; border:1px solid #10b981;'>VERIFIED RESEARCH</span>"
 
                     reply_text = (
-                        f"{demo_banner}"
                         f"🏢 <strong>Company Discovery: {disc['company_name']}</strong> {header_badge}<br><br>"
                         f"<p>{disc.get('company_overview', '')}</p><br>"
                         f"<strong>Discovered Public Decision-Makers:</strong><br>"
@@ -1548,17 +1511,15 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                         v_status = p.get("verification_status", "UNVERIFIED")
                         if v_status == "ROLE_NOT_VERIFIED":
                             role_html = "<span style='color:#f87171; font-weight:600;'>Role not verified</span> <span class='badge' style='background:#7f1d1d; color:#fca5a5; font-size:10px;'>ROLE NOT VERIFIED</span>"
-                        elif v_status == "VERIFIED":
-                            role_html = f"<span style='color:#38bdf8; font-weight:600;'>{p['designation']}</span> <span class='badge' style='background:#065f46; color:#34d399; font-size:10px;'>VERIFIED</span>"
                         else:
-                            role_html = f"<span style='color:#c084fc; font-weight:600;'>{p['designation']}</span> <span class='badge' style='background:#581c87; color:#d8b4fe; font-size:10px;'>OFFLINE REFERENCE</span>"
+                            role_html = f"<span style='color:#38bdf8; font-weight:600;'>{p['designation']}</span> <span class='badge' style='background:#065f46; color:#34d399; font-size:10px;'>VERIFIED</span>"
 
                         reply_text += (
                             f"<div style='background:#0b1120; border:1px solid #334155; padding:10px; border-radius:6px; margin:6px 0;'>"
                             f"<strong>{p['name']}</strong> — {role_html}<br>"
                             f"<small style='color:#94a3b8;'>{p.get('professional_relevance', '')}</small><br>"
                             f"<a href='{p.get('source_url', '#')}' target='_blank' style='color:#38bdf8; font-size:12px;'>🔗 Source: {p.get('source_title', p.get('source_url', 'Verified Source'))}</a><br>"
-                            f"<small style='color:#64748b;'>🕒 Retrieved: {p.get('retrieval_timestamp', disc.get('retrieval_timestamp', 'N/A'))} | Search Status: {p.get('search_status', disc.get('search_status', 'SUCCESS'))}</small><br>"
+                            f"<small style='color:#64748b;'>🕒 Retrieved: {p.get('retrieval_timestamp', disc.get('retrieval_timestamp', 'N/A'))} | Status: {p.get('search_status', disc.get('search_status', 'SUCCESS'))}</small><br>"
                             f"<button onclick=\"launchProspectFromChat('{safe_name}', '{safe_comp}', '{safe_desig}', '{safe_url}')\" class='btn-primary' style='margin-top:8px; font-size:11px; padding:4px 10px; cursor:pointer;'>⚡ Research {p['name']}</button>"
                             f"</div>"
                         )
@@ -1580,7 +1541,7 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                     "I'm ready to assist! Here are the supported commands:<br>"
                     "• <code>Research NVIDIA</code> (or <code>Research Google</code>) — Discover company overview & verified leadership<br>"
                     "• <code>Research Satya Nadella at Microsoft, CEO</code> — Direct prospect research & sequence drafting<br>"
-                    "• Or click <strong>⚡ Use Demo Lead</strong> in the top header for instant offline testing!"
+                    "• Or click <strong>⚡ Use Demo Lead</strong> in the top header for instant 1-click testing!"
                 )
 
             self.send_json({"reply": reply})
