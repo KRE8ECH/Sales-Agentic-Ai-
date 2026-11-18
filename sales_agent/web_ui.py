@@ -182,6 +182,21 @@ HTML_PAGE = """<!DOCTYPE html>
     }
     .btn-approve:hover { opacity: 0.9; }
 
+    .btn-action-sm {
+      background: linear-gradient(135deg, #38bdf8, #0284c7);
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-action-sm:hover { opacity: 0.9; }
+
     .content-viewport {
       flex: 1;
       overflow-y: auto;
@@ -292,6 +307,8 @@ HTML_PAGE = """<!DOCTYPE html>
     .badge-STOPPED { background: rgba(239, 68, 68, 0.2); color: #f87171; }
     .badge-COMPLETED { background: #1e293b; color: #94a3b8; }
     .badge-SENT { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .badge-LIVE { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+    .badge-DEMO { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; }
 
     /* Modal */
     .modal-backdrop {
@@ -388,12 +405,39 @@ HTML_PAGE = """<!DOCTYPE html>
       font-size: 13px;
     }
 
+    .error-box {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid var(--accent-red);
+      color: #f87171;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+
     .source-link {
       color: var(--primary);
       text-decoration: underline;
       font-size: 12px;
       display: inline-block;
       margin-top: 3px;
+    }
+
+    /* Prospect Card in Discovery */
+    .prospect-card {
+      background: #0b1120;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+    .prospect-card:hover {
+      border-color: var(--primary);
+      background: #111a2e;
     }
 
     .dropdown {
@@ -437,6 +481,7 @@ HTML_PAGE = """<!DOCTYPE html>
 
     <div class="nav-tabs">
       <button class="nav-btn active" onclick="switchTab('chat')">💬 Agent Chatbot</button>
+      <button class="nav-btn" onclick="switchTab('discovery')">🏢 Company Discovery</button>
       <button class="nav-btn" onclick="switchTab('leads')">👥 Leads & Pipeline</button>
       <button class="nav-btn" onclick="switchTab('detail')">🔍 RAG Dossier & Sequence</button>
       <button class="nav-btn" onclick="switchTab('settings')">⚙️ My Product Settings</button>
@@ -479,22 +524,64 @@ HTML_PAGE = """<!DOCTYPE html>
             <div class="chat-messages" id="chat-messages">
               <div class="message agent">
                 👋 Hello! I am your <strong>Personalized Multi-Touch Sales Outreach Agent</strong>.<br><br>
-                <strong>What I do:</strong><br>
-                1. 🔍 Research each lead via <strong>DuckDuckGo</strong> and build an evidence dossier with clickable source links.<br>
-                2. ✍️ Draft personalized emails strictly using your <strong>My Product Settings</strong> (no invented stats!).<br>
-                3. 🛡️ Keep every drafted touch as <strong>"Draft - Awaiting Approval"</strong> until you click <em>Approve & Send</em>.<br>
-                4. ⚡ You can click <strong>"Use Demo Lead"</strong> above for instant offline testing!
+                <strong>What I can do:</strong><br>
+                1. 🏢 <strong>Company Discovery:</strong> Type <code>Research NVIDIA</code>, <code>Research Infosys</code>, or <code>Research Microsoft</code> to discover company overview & key decision-makers automatically.<br>
+                2. 👤 <strong>Named Lead Outreach:</strong> Type <code>Research Satya Nadella at Microsoft, CEO</code> to launch direct outreach.<br>
+                3. 🛡️ <strong>Human Approval:</strong> All touches are held in <em>Draft - Awaiting Approval</em>. No emails sent automatically!<br>
+                4. ⚡ <strong>Demo Leads:</strong> Click <em>Use Demo Lead</em> in the top header for instant offline testing!
               </div>
             </div>
             <div class="chat-input-bar">
-              <input type="text" id="chat-input" class="chat-input" placeholder="Type a message or instruction (e.g. 'Research Satya Nadella at Microsoft')..." onkeypress="if(event.key==='Enter') sendChatMessage()">
+              <input type="text" id="chat-input" class="chat-input" placeholder="Enter company (e.g. 'Research NVIDIA') or lead ('Research Jensen Huang at NVIDIA, CEO')..." onkeypress="if(event.key==='Enter') sendChatMessage()">
               <button class="btn-primary" onclick="sendChatMessage()">Send</button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 2. LEADS TAB -->
+      <!-- 2. COMPANY DISCOVERY TAB -->
+      <div id="tab-discovery" class="tab-section">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <div>
+            <h2 style="font-size:18px; font-weight:700;">🏢 AI-Powered Company & Prospect Discovery</h2>
+            <div style="font-size:13px; color:var(--text-muted); margin-top:4px;">
+              Enter a company name only. The agent uses DuckDuckGo RAG to retrieve overview, recent announcements, and identify up to 3 verifiable decision-makers.
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-box" style="margin-bottom:20px;">
+          <div style="display:flex; gap:12px;">
+            <input type="text" id="discovery-company-input" class="chat-input" placeholder="Enter company name (e.g. NVIDIA, Infosys, Microsoft)..." onkeypress="if(event.key==='Enter') runCompanyDiscovery()">
+            <button class="btn-primary" onclick="runCompanyDiscovery()">🔍 Discover Prospects</button>
+          </div>
+          <div style="margin-top:10px; font-size:12px; color:var(--text-muted); display:flex; gap:16px;">
+            <span>Try: <a href="javascript:void(0)" onclick="setDiscoveryInput('NVIDIA')" style="color:var(--primary)">NVIDIA</a></span>
+            <span><a href="javascript:void(0)" onclick="setDiscoveryInput('Microsoft')" style="color:var(--primary)">Microsoft</a></span>
+            <span><a href="javascript:void(0)" onclick="setDiscoveryInput('Infosys')" style="color:var(--primary)">Infosys</a></span>
+          </div>
+        </div>
+
+        <!-- Discovery Progress / Stages indicator -->
+        <div id="discovery-progress" style="display:none; margin-bottom:20px;">
+          <div class="panel-box" style="border-color:var(--primary);">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="status-dot"></div>
+              <strong style="color:var(--primary);" id="discovery-stage-text">Agent Researching Company via DuckDuckGo...</strong>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:6px;" id="discovery-substage-text">
+              1. Querying DuckDuckGo -> 2. Python RAG Ranking -> 3. Verifying Decision-Maker Roles
+            </div>
+          </div>
+        </div>
+
+        <!-- Discovery Results Container -->
+        <div id="discovery-results" style="display:none;">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- 3. LEADS TAB -->
       <div id="tab-leads" class="tab-section">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <h2 style="font-size:16px;">Active Lead State Machine</h2>
@@ -505,10 +592,10 @@ HTML_PAGE = """<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- 3. RAG DOSSIER & SEQUENCE TAB -->
+      <!-- 4. RAG DOSSIER & SEQUENCE TAB -->
       <div id="tab-detail" class="tab-section">
         <div id="detail-empty" style="text-align:center; padding:50px; color:var(--text-muted);">
-          Select a lead from the <strong>Leads & Pipeline</strong> tab or click <strong>⚡ Use Demo Lead</strong> above to inspect its RAG Research Dossier and Outreach Sequence.
+          Select a lead from the <strong>Leads & Pipeline</strong> tab or use <strong>Company Discovery</strong> to inspect its RAG Research Dossier and Outreach Sequence.
         </div>
         <div id="detail-content" style="display:none;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -543,7 +630,7 @@ HTML_PAGE = """<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- 4. SETTINGS TAB -->
+      <!-- 5. SETTINGS TAB -->
       <div id="tab-settings" class="tab-section">
         <h2 style="font-size:16px; margin-bottom:16px;">⚙️ My Product & Sender Settings</h2>
         <p style="color:var(--text-muted); font-size:13px; margin-bottom:20px;">
@@ -578,7 +665,7 @@ HTML_PAGE = """<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- 5. LOGS TAB -->
+      <!-- 6. LOGS TAB -->
       <div id="tab-logs" class="tab-section">
         <h2 style="font-size:16px; margin-bottom:12px;">Visible Decision & Reasoning Audit Logs</h2>
         <div class="table-container">
@@ -587,7 +674,7 @@ HTML_PAGE = """<!DOCTYPE html>
               <tr>
                 <th style="width:160px;">Timestamp</th>
                 <th style="width:80px;">Lead ID</th>
-                <th style="width:140px;">Pipeline Stage</th>
+                <th style="width:160px;">Pipeline Stage</th>
                 <th style="width:220px;">Decision</th>
                 <th>Reasoning & Autonomous Thought Log</th>
               </tr>
@@ -630,6 +717,7 @@ HTML_PAGE = """<!DOCTYPE html>
 
   <script>
     let activeLeadId = null;
+    let latestDiscoveryData = null;
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-section').forEach(el => el.classList.remove('active'));
@@ -638,6 +726,7 @@ HTML_PAGE = """<!DOCTYPE html>
 
       const titles = {
         'chat': 'Agent Chatbot & Command Center',
+        'discovery': 'AI Company & Prospect Discovery',
         'leads': 'Leads & Pipeline State Machine',
         'detail': 'RAG Research Dossier & Sequence',
         'settings': 'My Product & Sender Settings',
@@ -648,6 +737,11 @@ HTML_PAGE = """<!DOCTYPE html>
       if (tabId === 'leads') loadLeads();
       if (tabId === 'logs') loadLogs();
       if (tabId === 'settings') loadSettings();
+    }
+
+    function setDiscoveryInput(comp) {
+      document.getElementById('discovery-company-input').value = comp;
+      runCompanyDiscovery();
     }
 
     async function checkHealth() {
@@ -714,13 +808,141 @@ HTML_PAGE = """<!DOCTYPE html>
       selectLead(data.lead_id);
     }
 
+    async function runCompanyDiscovery() {
+      const input = document.getElementById('discovery-company-input');
+      const company = input.value.trim();
+      if (!company) { alert('Please enter a company name.'); return; }
+
+      const progressBox = document.getElementById('discovery-progress');
+      const resultsBox = document.getElementById('discovery-results');
+      progressBox.style.display = 'block';
+      resultsBox.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/discover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ company })
+        });
+        const data = await res.json();
+        progressBox.style.display = 'none';
+        latestDiscoveryData = data;
+        renderDiscoveryResults(data);
+      } catch (err) {
+        progressBox.style.display = 'none';
+        resultsBox.style.display = 'block';
+        resultsBox.innerHTML = `<div class="error-box">Error during discovery: ${err.message}</div>`;
+      }
+    }
+
+    function renderDiscoveryResults(data) {
+      const box = document.getElementById('discovery-results');
+      box.style.display = 'block';
+      box.innerHTML = '';
+
+      if (data.status === 'NOT_FOUND' || (data.company_overview === 'NOT FOUND' && (!data.prospects || !data.prospects.length))) {
+        box.innerHTML = `
+          <div class="error-box">
+            <strong>❌ NOT FOUND:</strong> ${data.search_warning || 'DuckDuckGo search could not verify public leadership or company overview for this company.'}
+            <br><small style="color:#cbd5e1;">Zero employee names were invented.</small>
+          </div>
+        `;
+        return;
+      }
+
+      const isLive = data.data_source === 'LIVE_SEARCH';
+      const badgeClass = isLive ? 'badge-LIVE' : 'badge-DEMO';
+      const badgeText = isLive ? 'LIVE SEARCH' : 'DEMO DATA - OFFLINE VERIFIED';
+
+      let html = `
+        <div class="panel-box">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <h3 style="font-size:20px; font-weight:700;">${data.company_name}</h3>
+              <p style="margin-top:6px; font-size:14px; color:#cbd5e1; line-height:1.5;">${data.company_overview}</p>
+            </div>
+            <span class="badge ${badgeClass}">${badgeText}</span>
+          </div>
+          ${data.search_warning ? `<div class="warning-box" style="margin-top:12px;">⚠️ ${data.search_warning}</div>` : ''}
+        </div>
+      `;
+
+      // Business Activities & Announcements
+      if (data.recent_announcements && data.recent_announcements.length) {
+        html += `
+          <div class="panel-box">
+            <div class="panel-title">📰 Recent Public Announcements & Context</div>
+            <ul style="padding-left:18px; font-size:13px; line-height:1.6;">
+        `;
+        data.recent_announcements.forEach(a => {
+          html += `
+            <li style="margin-bottom:8px;">
+              <strong>${a.title}</strong><br>
+              <span style="color:#94a3b8;">${a.snippet || ''}</span><br>
+              ${a.url ? `<a href="${a.url}" target="_blank" class="source-link">🔗 Source: ${a.url}</a>` : ''}
+            </li>
+          `;
+        });
+        html += `</ul></div>`;
+      }
+
+      // Discovered Prospects Section
+      html += `
+        <div class="panel-box">
+          <div class="panel-title">👥 Publicly Verified Decision-Makers (Up to 3)</div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">Select any decision-maker below to launch personalized research and draft Touch #1 (held for approval).</p>
+      `;
+
+      if (!data.prospects || !data.prospects.length) {
+        html += `<div style="background:#0b1120; border:1px solid #ef4444; color:#f87171; padding:12px; border-radius:8px;"><strong>Prospects: NOT FOUND</strong> (No verified executive names discovered in public snippets)</div>`;
+      } else {
+        data.prospects.forEach((p, idx) => {
+          html += `
+            <div class="prospect-card">
+              <div style="flex:1;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <strong style="font-size:15px; color:#fff;">${p.name}</strong>
+                  <span style="color:var(--primary); font-size:13px; font-weight:600;">• ${p.designation}</span>
+                </div>
+                <div style="font-size:12px; color:#cbd5e1; margin-top:4px;">
+                  ${p.professional_relevance || 'Leadership oversight and strategic roadmap'}
+                </div>
+                ${p.source_url ? `<a href="${p.source_url}" target="_blank" class="source-link">🔗 Verified Source: ${p.source_title || p.source_url}</a>` : ''}
+              </div>
+              <button class="btn-action-sm" onclick="launchDiscoveredProspect(${idx})">⚡ Research Prospect</button>
+            </div>
+          `;
+        });
+      }
+      html += `</div>`;
+      box.innerHTML = html;
+    }
+
+    async function launchDiscoveredProspect(prospectIndex) {
+      if (!latestDiscoveryData || !latestDiscoveryData.prospects || !latestDiscoveryData.prospects[prospectIndex]) return;
+      const p = latestDiscoveryData.prospects[prospectIndex];
+
+      const res = await fetch('/api/launch-prospect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company: latestDiscoveryData.company_name,
+          name: p.name,
+          designation: p.designation,
+          context_dossier: latestDiscoveryData
+        })
+      });
+      const data = await res.json();
+      selectLead(data.lead_id);
+    }
+
     async function loadLeads() {
       const res = await fetch('/api/leads');
       const leads = await res.json();
       const grid = document.getElementById('lead-grid');
       grid.innerHTML = '';
       if (!leads.length) {
-        grid.innerHTML = '<div style="color:var(--text-muted); grid-column:1/-1;">No leads yet. Click "+ Add New Lead" or "⚡ Use Demo Lead" above!</div>';
+        grid.innerHTML = '<div style="color:var(--text-muted); grid-column:1/-1;">No leads yet. Use <strong>Company Discovery</strong> or click "+ Add New Lead" above!</div>';
         return;
       }
       leads.forEach(l => {
@@ -773,7 +995,6 @@ HTML_PAGE = """<!DOCTYPE html>
 
       let dHtml = `<p style="margin-bottom:12px;"><strong>Company Overview:</strong> ${d.company_overview || 'NOT FOUND'}</p>`;
       
-      // Facts with clickable URLs
       const facts = d.facts || [];
       if (!facts.length || (facts.length === 1 && facts[0].fact === 'NOT FOUND')) {
         dHtml += `<div style="background:#0b1120; border:1px solid #ef4444; color:#f87171; padding:10px 14px; border-radius:6px; margin:8px 0;"><strong>Research Facts:</strong> NOT FOUND (No verified public web context found)</div>`;
@@ -870,7 +1091,7 @@ HTML_PAGE = """<!DOCTYPE html>
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td style="color:var(--text-muted);">${(l.timestamp || '').slice(0, 19).replace('T', ' ')}</td>
-          <td>#${l.lead_id}</td>
+          <td>${l.lead_id ? '#' + l.lead_id : '-'}</td>
           <td><span style="color:var(--primary); font-weight:600;">${l.stage}</span></td>
           <td><strong style="color:#fbbf24;">${l.decision}</strong></td>
           <td class="reasoning-cell">${l.reasoning}</td>
@@ -910,7 +1131,7 @@ HTML_PAGE = """<!DOCTYPE html>
 
         const agentMsg = document.createElement('div');
         agentMsg.className = 'message agent';
-        agentMsg.innerHTML = data.reply.replace(/\\n/g, '<br>');
+        agentMsg.innerHTML = data.reply;
         chatBox.appendChild(agentMsg);
         chatBox.scrollTop = chatBox.scrollHeight;
       } catch (err) {
@@ -1060,6 +1281,26 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
             self.send_json({"status": "ok"})
             return
 
+        elif path == "/api/discover":
+            company = payload.get("company", "").strip()
+            discovery_res = orchestrator.discover_company(company)
+            self.send_json(discovery_res)
+            return
+
+        elif path == "/api/launch-prospect":
+            company = payload.get("company", "")
+            name = payload.get("name", "")
+            designation = payload.get("designation", "")
+            context = payload.get("context_dossier")
+            result = orchestrator.select_and_launch_prospect(
+                company=company,
+                prospect_name=name,
+                designation=designation,
+                context_dossier=context
+            )
+            self.send_json(result)
+            return
+
         elif path == "/api/demo-lead":
             demo_type = payload.get("type", "founder")
             res = orchestrator.load_demo_lead(demo_type)
@@ -1104,30 +1345,65 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
 
         elif path == "/api/chat":
             msg = payload.get("message", "").strip()
-            if msg.lower().startswith("research") or msg.lower().startswith("prospect") or msg.lower().startswith("add lead"):
-                import re
-                m = re.search(r"(?:research|prospect|add lead)\s+([A-Za-z\s]+?)\s+at\s+([A-Za-z0-9\s]+?)(?:,\s*([A-Za-z0-9\s]+))?$", msg, re.IGNORECASE)
-                if m:
-                    p_name = m.group(1).strip()
-                    p_comp = m.group(2).strip()
-                    p_role = m.group(3).strip() if m.group(3) else "Executive"
-                    res = orchestrator.onboard_and_launch_lead(
-                        name=p_name,
-                        company=p_comp,
-                        role=p_role,
-                        industry="Technology"
-                    )
-                    reply_text = (
-                        f"✅ Researched and onboarded **{p_name}** at **{p_comp}** (Lead #{res['lead_id']})!\n\n"
-                        f"**Touch #1 Drafted (Awaiting Approval):**\n"
-                        f"Subject: {res['first_touch'].get('subject')}\n\n"
-                        f"{res['first_touch'].get('content')}\n\n"
-                        f"*Evidence Grounded:* {res['first_touch'].get('researched_evidence_used')}\n\n"
-                        f"👉 *Click 'Approve & Send (simulated)' on the sequence viewer to approve dispatch.*"
-                    )
-                    self.send_json({"reply": reply_text})
-                    return
+            import re
 
+            # Command 1: Specific named lead: "Research [Name] at [Company], [Role]"
+            m_lead = re.search(r"(?:research|prospect|add lead)\s+([A-Za-z\s]+?)\s+at\s+([A-Za-z0-9\s]+?)(?:,\s*([A-Za-z0-9\s]+))?$", msg, re.IGNORECASE)
+            if m_lead and " at " in msg.lower():
+                p_name = m_lead.group(1).strip()
+                p_comp = m_lead.group(2).strip()
+                p_role = m_lead.group(3).strip() if m_lead.group(3) else "Executive"
+                res = orchestrator.onboard_and_launch_lead(
+                    name=p_name,
+                    company=p_comp,
+                    role=p_role,
+                    industry="Technology"
+                )
+                reply_text = (
+                    f"✅ <strong>Researched {p_name} at {p_comp} (Lead #{res['lead_id']})</strong><br><br>"
+                    f"<strong>Touch #1 Drafted (Status: Draft - Awaiting Approval):</strong><br>"
+                    f"<em>Subject:</em> {res['first_touch'].get('subject')}<br>"
+                    f"<pre style='background:#1e293b; padding:10px; border-radius:6px; margin:8px 0; white-space:pre-wrap;'>{res['first_touch'].get('content')}</pre>"
+                    f"<small style='color:var(--text-muted);'>Evidence: {res['first_touch'].get('researched_evidence_used')}</small><br><br>"
+                    f"👉 <em>Go to 'RAG Dossier & Sequence' tab to review and click 'Approve & Send'.</em>"
+                )
+                self.send_json({"reply": reply_text})
+                return
+
+            # Command 2: Company-only search: "Research [Company]" (e.g. "Research NVIDIA", "Research Infosys")
+            m_comp = re.search(r"^(?:research|discover|explore|find leads in)\s+([A-Za-z0-9\s\.\&\-]+?)$", msg, re.IGNORECASE)
+            if m_comp:
+                company_target = m_comp.group(1).strip()
+                # Run Company Discovery
+                disc = orchestrator.discover_company(company_target)
+                if disc.get("status") == "NOT_FOUND" or not disc.get("prospects"):
+                    reply_text = (
+                        f"🏢 <strong>Company Discovery: {company_target}</strong><br><br>"
+                        f"<strong>Status: NOT FOUND</strong><br>"
+                        f"<p style='color:#f87171;'>{disc.get('search_warning') or 'DuckDuckGo search returned 0 verified leadership results for this company. Zero employee names were invented.'}</p>"
+                    )
+                else:
+                    is_live = disc.get("data_source") == "LIVE_SEARCH"
+                    badge = f"<span class='badge {'badge-LIVE' if is_live else 'badge-DEMO'}'>{'LIVE SEARCH' if is_live else 'DEMO DATA - OFFLINE VERIFIED'}</span>"
+                    reply_text = (
+                        f"🏢 <strong>Company Discovery: {disc['company_name']}</strong> {badge}<br><br>"
+                        f"<p>{disc.get('company_overview', '')}</p><br>"
+                        f"<strong>Discovered Public Decision-Makers:</strong><br>"
+                    )
+                    for idx, p in enumerate(disc.get("prospects", [])):
+                        reply_text += (
+                            f"<div style='background:#0b1120; border:1px solid #334155; padding:10px; border-radius:6px; margin:6px 0;'>"
+                            f"<strong>{p['name']}</strong> — <em>{p['designation']}</em><br>"
+                            f"<small style='color:#94a3b8;'>{p.get('professional_relevance', '')}</small><br>"
+                            f"<a href='{p['source_url']}' target='_blank' style='color:#38bdf8; font-size:12px;'>🔗 Source: {p.get('source_title', p['source_url'])}</a><br>"
+                            f"<small style='color:#34d399;'>Tip: Switch to the <strong>🏢 Company Discovery</strong> tab to select this prospect with one click!</small>"
+                            f"</div>"
+                        )
+
+                self.send_json({"reply": reply_text})
+                return
+
+            # Default: Conversational response
             try:
                 reply = ollama.generate(
                     prompt=msg,
@@ -1137,7 +1413,7 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                     )
                 )
             except Exception:
-                reply = "I'm ready to assist! You can tell me 'Research [Name] at [Company], [Role]' or use the '⚡ Use Demo Lead' button."
+                reply = "I'm ready to assist! You can type <code>Research NVIDIA</code> to discover decision-makers, or <code>Research Jensen Huang at NVIDIA, CEO</code> to launch direct outreach."
 
             self.send_json({"reply": reply})
             return

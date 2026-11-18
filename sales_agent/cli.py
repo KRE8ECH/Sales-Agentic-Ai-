@@ -23,7 +23,7 @@ def print_banner():
     """
     console.print(f"[bold cyan]{banner}[/bold cyan]")
     console.print(f"[yellow]Ollama Host:[/yellow] {config.ollama_base_url} | [yellow]Model:[/yellow] {config.ollama_model}")
-    console.print("[dim]Commands: 'demo', 'research <name> at <company>', 'leads', 'show <id>', 'approve <touch_id>', 'reply <id>', 'settings', 'logs <id>', 'exit'[/dim]\n")
+    console.print("[dim]Commands: 'research <company>' (e.g. 'research NVIDIA'), 'research <name> at <company>', 'demo', 'leads', 'show <id>', 'approve <touch_id>', 'reply <id>', 'settings', 'exit'[/dim]\n")
 
 def check_ollama(client: OllamaClient):
     if client.is_connected():
@@ -225,6 +225,72 @@ def handle_demo_lead(orchestrator: OutreachOrchestrator, db: Database):
     console.print(f"[bold green]✔ Demo lead loaded successfully! (Lead ID: #{res['lead_id']})[/bold green]")
     show_lead_details(db, res["lead_id"])
 
+def handle_company_discovery(orchestrator: OutreachOrchestrator, db: Database, company_name: str):
+    console.print(f"\n[bold cyan]🏢 Initiating AI Company Discovery for: '{company_name}'...[/bold cyan]")
+    with console.status("[bold green]DuckDuckGo search + RAG leadership extraction in progress..."):
+        disc = orchestrator.discover_company(company_name)
+
+    if disc.get("status") == "NOT_FOUND" or (disc.get("company_overview") == "NOT FOUND" and not disc.get("prospects")):
+        console.print(Panel(
+            f"[bold red]❌ NOT FOUND:[/bold red] {disc.get('search_warning') or 'DuckDuckGo search returned 0 verified leadership results for this company.'}\n"
+            "[dim]Strict anti-hallucination guarantee: Zero employee names were invented.[/dim]",
+            border_style="red",
+            title="Discovery Result"
+        ))
+        return
+
+    is_live = disc.get("data_source") == "LIVE_SEARCH"
+    source_badge = "[bold green][LIVE SEARCH][/bold green]" if is_live else "[bold cyan][DEMO DATA - OFFLINE VERIFIED][/bold cyan]"
+
+    console.print(Panel(
+        f"[bold white]Company:[/bold white] {disc['company_name']} {source_badge}\n\n"
+        f"[bold]Overview:[/bold] {disc.get('company_overview')}\n\n"
+        + (f"[yellow]⚠️ {disc['search_warning']}[/yellow]\n\n" if disc.get("search_warning") else "")
+        + "### Recent Public Announcements & Context:\n"
+        + "\n".join([f"- **{a.get('title')}**\n  [Source Link]({a.get('url')})" for a in disc.get("recent_announcements", [])]),
+        title="Company Intelligence (DuckDuckGo RAG)",
+        border_style="cyan"
+    ))
+
+    prospects = disc.get("prospects", [])
+    if not prospects:
+        console.print("[bold red]Prospects: NOT FOUND (No verified executive names discovered in public snippets)[/bold red]")
+        return
+
+    console.print("\n[bold]Publicly Verified Decision-Makers:[/bold]")
+    for idx, p in enumerate(prospects):
+        console.print(Panel(
+            f"[bold cyan][{idx + 1}] {p['name']}[/bold cyan] • [bold]{p['designation']}[/bold]\n"
+            f"[dim]Relevance:[/dim] {p.get('professional_relevance')}\n"
+            f"[dim]Source URL:[/dim] [yellow]{p.get('source_url')}[/yellow]",
+            title=f"Discovered Prospect #{idx + 1}",
+            border_style="blue"
+        ))
+
+    choice = Prompt.ask(
+        "\nSelect a prospect to launch outreach sequence",
+        choices=[str(i + 1) for i in range(len(prospects))] + ["cancel"],
+        default="1"
+    )
+
+    if choice == "cancel":
+        console.print("[dim]Selection cancelled.[/dim]")
+        return
+
+    selected_idx = int(choice) - 1
+    selected_prospect = prospects[selected_idx]
+
+    with console.status(f"[bold green]Compiling RAG dossier and drafting Touch #1 for {selected_prospect['name']}..."):
+        res = orchestrator.select_and_launch_prospect(
+            company=disc["company_name"],
+            prospect_name=selected_prospect["name"],
+            designation=selected_prospect["designation"],
+            context_dossier=disc
+        )
+
+    console.print(f"[bold green]✔ Prospect '{selected_prospect['name']}' onboarded! (Lead ID: #{res['lead_id']})[/bold green]")
+    show_lead_details(db, res["lead_id"])
+
 def main():
     print_banner()
     db = Database()
@@ -308,28 +374,37 @@ def main():
                     continue
                 show_decision_logs(db, int(arg))
 
-            elif action in ["research", "prospect"] or (action == "add" and " at " in arg):
+            elif action in ["research", "prospect", "discover"] or (action == "add" and " at " in arg):
                 import re
-                m = re.search(r"(?:research|prospect|add)?\s*([A-Za-z\s]+?)\s+at\s+([A-Za-z0-9\s]+?)(?:,\s*([A-Za-z0-9\s]+))?$", cmd, re.IGNORECASE)
-                if m:
-                    p_name = m.group(1).strip()
-                    p_comp = m.group(2).strip()
-                    p_role = m.group(3).strip() if m.group(3) else "Executive"
-                    email = f"{p_name.lower().replace(' ', '.')}@{p_comp.lower().replace(' ', '')}.com"
+                # Case 1: "Research [Name] at [Company], [Role]"
+                if " at " in cmd.lower():
+                    m = re.search(r"(?:research|prospect|add)?\s*([A-Za-z\s]+?)\s+at\s+([A-Za-z0-9\s]+?)(?:,\s*([A-Za-z0-9\s]+))?$", cmd, re.IGNORECASE)
+                    if m:
+                        p_name = m.group(1).strip()
+                        p_comp = m.group(2).strip()
+                        p_role = m.group(3).strip() if m.group(3) else "Executive"
+                        email = f"{p_name.lower().replace(' ', '.')}@{p_comp.lower().replace(' ', '')}.com"
 
-                    console.print(f"[bold cyan]Initiating Autonomous Pipeline for {p_name} at {p_comp} ({p_role})...[/bold cyan]")
-                    with console.status(f"[bold green]DuckDuckGo search + RAG scoring + Sequence Drafting..."):
-                        result = orchestrator.onboard_and_launch_lead(
-                            name=p_name,
-                            company=p_comp,
-                            role=p_role,
-                            email=email,
-                            industry="Technology"
-                        )
-                    console.print(f"[bold green]✔ Lead onboarded and Touch #1 drafted (Awaiting Approval)![/bold green] (Lead ID: {result['lead_id']})")
-                    show_lead_details(db, result["lead_id"])
+                        console.print(f"[bold cyan]Initiating Autonomous Pipeline for {p_name} at {p_comp} ({p_role})...[/bold cyan]")
+                        with console.status(f"[bold green]DuckDuckGo search + RAG scoring + Sequence Drafting..."):
+                            result = orchestrator.onboard_and_launch_lead(
+                                name=p_name,
+                                company=p_comp,
+                                role=p_role,
+                                email=email,
+                                industry="Technology"
+                            )
+                        console.print(f"[bold green]✔ Lead onboarded and Touch #1 drafted (Awaiting Approval)![/bold green] (Lead ID: {result['lead_id']})")
+                        show_lead_details(db, result["lead_id"])
+                    else:
+                        console.print("[yellow]Could not parse name and company. Format: 'research <Name> at <Company>, <Role>'[/yellow]")
                 else:
-                    console.print("[yellow]Could not parse name and company. Format: 'research <Name> at <Company>, <Role>' or use 'add'[/yellow]")
+                    # Case 2: Company-only search: "Research [Company]" (e.g. "Research NVIDIA")
+                    company_name = arg.strip() if arg else Prompt.ask("Enter Company Name to Discover").strip()
+                    if company_name:
+                        handle_company_discovery(orchestrator, db, company_name)
+                    else:
+                        console.print("[yellow]Please specify a company name. Example: 'research NVIDIA'[/yellow]")
 
             elif action == "add":
                 console.print("[bold cyan]Enter Lead Details for Research & Outreach:[/bold cyan]")

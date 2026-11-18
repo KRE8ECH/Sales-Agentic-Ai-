@@ -6,11 +6,12 @@ from sales_agent.agents.sequence_planner import SequencePlannerAgent
 from sales_agent.agents.drafting_agent import DraftingAgent
 from sales_agent.agents.reply_classifier import ReplyClassifierAgent
 from sales_agent.agents.decision_agent import DecisionAgent
+from sales_agent.search.discovery import CompanyDiscoveryEngine
 
 class OutreachOrchestrator:
     """
     Coordinates the multi-agent pipeline with Human-in-the-Loop approval:
-    Research -> Sequence Planning -> Drafting (Awaiting Approval) -> User Approval & Send -> Reply Classification -> Decision Engine
+    Company Discovery -> Decision-Maker Identification -> Research -> Sequence Planning -> Drafting (Awaiting Approval) -> User Approval & Send -> Reply Classification -> Decision Engine
     All state is stored and persisted in SQLite.
     """
 
@@ -22,6 +23,125 @@ class OutreachOrchestrator:
         self.drafter = DraftingAgent(self.ollama, self.db)
         self.classifier = ReplyClassifierAgent(self.ollama, self.db)
         self.decision_engine = DecisionAgent(self.db)
+        self.discovery_engine = CompanyDiscoveryEngine(self.ollama)
+
+    def discover_company(self, company_name: str) -> Dict[str, Any]:
+        """Discovers company overview, business activities, and up to 3 verified decision-makers."""
+        settings = self.db.get_product_settings()
+        discovery_result = self.discovery_engine.discover(company_name, my_product_settings=settings)
+
+        # Log decision into audit table
+        prospects = discovery_result.get("prospects", [])
+        status = discovery_result.get("status", "OK")
+        reasoning = (
+            f"Company discovery executed for '{company_name}'. "
+            f"Identified {len(prospects)} verified decision-makers via {discovery_result.get('data_source', 'LIVE_SEARCH')}. "
+            f"{discovery_result.get('search_warning', '')}"
+        )
+        self.db.log_decision(
+            lead_id=0,
+            stage="COMPANY_DISCOVERY",
+            decision="DISCOVERY_COMPLETED" if prospects else "DISCOVERY_NO_PROSPECTS",
+            reasoning=reasoning.strip(),
+            metadata={
+                "company": company_name,
+                "data_source": discovery_result.get("data_source"),
+                "prospects_count": len(prospects),
+                "status": status
+            }
+        )
+
+        return discovery_result
+
+    def select_and_launch_prospect(
+        self,
+        company: str,
+        prospect_name: str,
+        designation: str,
+        industry: str = "",
+        context_dossier: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Onboards a prospect selected from Company Discovery and drafts Touch 1 awaiting approval."""
+        email = f"{prospect_name.lower().replace(' ', '.')}@{company.lower().replace(' ', '')}.com"
+
+        # 1. Create lead record
+        lead_id = self.db.create_lead(
+            name=prospect_name,
+            company=company,
+            role=designation,
+            email=email,
+            industry=industry or "Technology"
+        )
+
+        # 2. Compile research dossier
+        if context_dossier and context_dossier.get("company_overview"):
+            # Format facts from discovery
+            facts = []
+            for ann in context_dossier.get("recent_announcements", []):
+                facts.append({
+                    "fact": ann.get("title", "") + ": " + ann.get("snippet", ""),
+                    "source_url": ann.get("url", ""),
+                    "source_title": ann.get("title", "")
+                })
+
+            lead_dossier = {
+                "company_overview": context_dossier.get("company_overview", ""),
+                "search_status": "OK",
+                "search_warning": context_dossier.get("search_warning"),
+                "facts": facts or [
+                    {
+                        "fact": f"{prospect_name} serves as {designation} at {company}.",
+                        "source_url": context_dossier.get("prospects", [{}])[0].get("source_url", ""),
+                        "source_title": f"{company} Leadership"
+                    }
+                ],
+                "recent_events": [f["fact"] for f in facts] if facts else [f"{prospect_name} leads operations as {designation}"],
+                "role_priorities": [
+                    f"Driving high-impact initiatives and operations as {designation} at {company}",
+                    "Evaluating enterprise solutions aligned with strategic roadmap"
+                ],
+                "potential_pain_points": context_dossier.get("potential_business_needs", [
+                    "Balancing aggressive growth priorities with efficient execution"
+                ]),
+                "tailored_hooks": [
+                    f"Noticed {company}'s strategic momentum and public announcements.",
+                    f"Reaching out to {designation} leadership regarding operational enablement."
+                ],
+                "confidence_score": 0.90,
+                "sources": [
+                    {"id": idx + 1, "title": ann.get("title", ""), "url": ann.get("url", "")}
+                    for idx, ann in enumerate(context_dossier.get("recent_announcements", []))
+                ]
+            }
+            self.db.save_research_dossier(lead_id, lead_dossier)
+            dossier = lead_dossier
+        else:
+            # Run fresh research agent
+            dossier = self.researcher.research_lead(lead_id)
+
+        # 3. Sequence Planner establishes 4-touch schedule
+        plan = self.planner.plan_sequence(lead_id)
+
+        # 4. Drafting Agent crafts Touch 1 (Saved as AWAITING_APPROVAL)
+        touch1 = self.drafter.draft_touch(lead_id, touch_number=1)
+
+        # 5. Lead is placed in AWAITING_APPROVAL state (NOT sent automatically)
+        self.db.update_lead_status(lead_id, status="AWAITING_APPROVAL", current_touch=0)
+
+        self.db.log_decision(
+            lead_id=lead_id,
+            stage="PROSPECT_SELECTED",
+            decision="TOUCH_1_READY_FOR_APPROVAL",
+            reasoning=f"Selected prospect '{prospect_name}' ({designation} at {company}) from Company Discovery. Touch #1 drafted and held for human review.",
+            metadata={"lead_id": lead_id, "touch_id": touch1["touch_id"], "subject": touch1.get("subject", "")}
+        )
+
+        return {
+            "lead_id": lead_id,
+            "dossier": dossier,
+            "plan": plan,
+            "first_touch": touch1
+        }
 
     def onboard_and_launch_lead(
         self,
