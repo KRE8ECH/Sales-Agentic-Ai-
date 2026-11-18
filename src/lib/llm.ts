@@ -5,7 +5,7 @@
 
 export function llmStatus(): { available: boolean; model: string; source: string } {
   const key = process.env.NVIDIA_API_KEY;
-  const model = process.env.NVIDIA_MODEL || "meta/llama-3.1-8b-instruct";
+  const model = process.env.NVIDIA_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b";
   return {
     available: Boolean(key),
     model,
@@ -35,7 +35,7 @@ export async function chat(
 ): Promise<string | null> {
   const key = process.env.NVIDIA_API_KEY;
   if (!key) return null;
-  const model = opts.model || process.env.NVIDIA_MODEL || "meta/llama-3.1-8b-instruct";
+  const model = opts.model || process.env.NVIDIA_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b";
   const base = process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1";
 
   try {

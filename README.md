@@ -26,9 +26,15 @@ Production build: `npm run build && npm run start`.
 cp .env.example .env.local   # then paste your key
 ```
 
-`NVIDIA_API_KEY` + `NVIDIA_MODEL` (default `meta/llama-3.1-8b-instruct`). With a key set,
+`NVIDIA_API_KEY` + `NVIDIA_MODEL` (default `nvidia/nemotron-3.5-lightning-30b-a3b`). With a key set,
 drafting and classification use the LLM; without one, the deterministic brain takes over
 automatically. The app never breaks either way.
+
+NVIDIA retires models from its free catalog over time (the previous default,
+`meta/llama-3.1-8b-instruct`, reached end of life on 2026-08-26 and now returns HTTP 410).
+To pick a currently served model, call `GET /api/health/llm?list=1` with the key set, then
+set `NVIDIA_MODEL` to one of the returned ids. `GET /api/health/llm?probe=1` verifies the
+key and model with a real completion.
 
 ---
 
@@ -98,6 +104,8 @@ time, so the audit trail reads consistently.
 | POST | `/api/replies/[id]/classify` | Re-run classification + next-step |
 | GET | `/api/decisions` | Audit log (`?leadId=`, `?agent=`) |
 | GET/POST/PATCH | `/api/playbooks` | Cadence templates |
+| GET | `/api/health` | Instance id, DB mode, LLM status, sim clock, lead count |
+| GET | `/api/health/llm` | Provider status; `?probe=1` makes a real call, `?list=1` lists the live model catalog, `?model=<id>` overrides the model |
 
 ---
 

@@ -141,7 +141,7 @@ zero data and with full data; nothing placeholder.
 
 | Decision | Choice |
 |----------|--------|
-| LLM | **NVIDIA NIM free API** (`integrate.api.nvidia.com`, OpenAI-compatible, `NVIDIA_API_KEY`). Default model `meta/llama-3.1-8b-instruct`, configurable. **Deterministic fallback brain** runs everything with no key, so the app is never dead in the demo. |
+| LLM | **NVIDIA NIM free API** (`integrate.api.nvidia.com`, OpenAI-compatible, `NVIDIA_API_KEY`). Default model `nvidia/nemotron-3.5-lightning-30b-a3b`, configurable. **Deterministic fallback brain** runs everything with no key, so the app is never dead in the demo. |
 | Offer / ICP | Placeholder, editable in-app: product = **Cadence** (this tool), ICP = sales leaders at 50–500-person B2B companies. Self-referential demo: the tool sells itself. |
 | Research source | **Built-in knowledge base** — 8 seeded fictional-but-realistic companies with news/funding/events. Pluggable slot for a real web-search API later. (Adzuna is job-listing data — not a fit for company research.) |
 | Sending | **Simulated inbox** only (per the brief: never real unsolicited sends). |
@@ -172,3 +172,33 @@ full decision log — with no external service required thanks to the fallback b
 - **Phase 3 — Inbox & classification.**
 - **Phase 4 — Playbooks, analytics, polish.**
 - **Phase 5 — Deploy prep + README + scripted demo.**
+
+---
+
+## 8. Deployment status (2026-11-18)
+
+Live: **https://cadence-outreach.vercel.app** — Vercel project `cadence-outreach`
+(`prj_xEF1dd7r8sOtpAiyDxXhB56o8sU7`), linked to `KRE8ECH/Sales-Agentic-Ai-`, production
+branch `main`. `NVIDIA_API_KEY` is stored as an encrypted production env var.
+
+### Storage: ephemeral on serverless (accepted)
+
+Vercel serverless functions have no writable shared filesystem, so `src/lib/db.ts` runs
+`node:sqlite` in **memory mode** when `VERCEL=1` (file mode locally). Consequences:
+
+- Seeded lead ids are **deterministic** (`lead_${slug}`, e.g. `lead_northwind-freight`), so
+  deep links resolve on any instance. Verified live.
+- A warm instance keeps full pipeline state; when the platform rotates the instance (idle
+  recycling, deploys, bursts), state returns to the fresh seed. The sidebar badges this as
+  `ephemeral data · serverless`. `GET /api/health` exposes the per-boot instance id, DB
+  mode, LLM status, sim clock and lead count to make rotation visible.
+- A persistent store needs an async driver (Turso/libSQL `execute()` is async-only, which
+  cannot wrap the synchronous `node:sqlite` layer without a full async rewrite). Vercel
+  Postgres via `CADENCE_DATABASE_URL` is the upgrade path; the seam is `src/lib/db.ts`.
+
+### LLM model
+
+NVIDIA retired `meta/llama-3.1-8b-instruct` (end of life 2026-08-26, HTTP 410). Default is
+now `nvidia/nemotron-3.5-lightning-30b-a3b`, verified live through
+`GET /api/health/llm?probe=1`. `?list=1` returns the live catalog (32 models at time of
+writing) so the model can be swapped without a code change.
