@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { chat, getLastLlmError, llmStatus } from "@/lib/llm";
+import { chat, getLastLlmError, getLastLlmRaw, llmStatus } from "@/lib/llm";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
       { role: "system", content: "Reply with one short sentence." },
       { role: "user", content: "Say that the outreach agent is online." },
     ],
-    { maxTokens: 40, temperature: 0.2, model: override }
+    { maxTokens: 400, temperature: 0.2, model: override }
   );
   return NextResponse.json({
     ...status,
@@ -54,5 +54,6 @@ export async function GET(req: Request) {
     usedModel: override ?? status.model,
     sample: text,
     error: text ? null : getLastLlmError(),
+    raw: url.searchParams.has("debug") ? getLastLlmRaw() : undefined,
   });
 }

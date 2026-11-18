@@ -24,6 +24,11 @@ export function getLastLlmError(): string | null {
   return lastLlmError;
 }
 
+let lastLlmRaw: string | null = null;
+export function getLastLlmRaw(): string | null {
+  return lastLlmRaw;
+}
+
 export async function chat(
   messages: ChatMessage[],
   opts: { temperature?: number; maxTokens?: number; model?: string } = {}
@@ -57,6 +62,7 @@ export async function chat(
     const data = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
+    lastLlmRaw = JSON.stringify(data).slice(0, 1200);
     const text = data.choices?.[0]?.message?.content ?? null;
     lastLlmError = text ? null : "empty completion";
     return text;
