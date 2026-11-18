@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { chat, lastLlmError, llmStatus } from "@/lib/llm";
+import { chat, getLastLlmError, llmStatus } from "@/lib/llm";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +26,6 @@ export async function GET(req: Request) {
     ok: Boolean(text),
     latencyMs: Date.now() - started,
     sample: text,
-    error: text ? null : lastLlmError(),
+    error: text ? null : getLastLlmError(),
   });
 }

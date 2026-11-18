@@ -20,7 +20,7 @@ interface ChatMessage {
 
 /** Last failure from chat(), for diagnostics (health probe / server logs). */
 let lastLlmError: string | null = null;
-export function lastLlmError(): string | null {
+export function getLastLlmError(): string | null {
   return lastLlmError;
 }
 
