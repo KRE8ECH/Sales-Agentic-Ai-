@@ -38,18 +38,20 @@ export async function GET(req: Request) {
     return NextResponse.json({ ...status, probed: true, ok: false, error: "no key" });
   }
   const started = Date.now();
+  const override = url.searchParams.get("model") ?? undefined;
   const text = await chat(
     [
       { role: "system", content: "Reply with one short sentence." },
       { role: "user", content: "Say that the outreach agent is online." },
     ],
-    { maxTokens: 40, temperature: 0.2 }
+    { maxTokens: 40, temperature: 0.2, model: override }
   );
   return NextResponse.json({
     ...status,
     probed: true,
     ok: Boolean(text),
     latencyMs: Date.now() - started,
+    usedModel: override ?? status.model,
     sample: text,
     error: text ? null : getLastLlmError(),
   });

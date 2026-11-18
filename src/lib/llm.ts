@@ -26,11 +26,11 @@ export function getLastLlmError(): string | null {
 
 export async function chat(
   messages: ChatMessage[],
-  opts: { temperature?: number; maxTokens?: number } = {}
+  opts: { temperature?: number; maxTokens?: number; model?: string } = {}
 ): Promise<string | null> {
   const key = process.env.NVIDIA_API_KEY;
   if (!key) return null;
-  const model = process.env.NVIDIA_MODEL || "meta/llama-3.1-8b-instruct";
+  const model = opts.model || process.env.NVIDIA_MODEL || "meta/llama-3.1-8b-instruct";
   const base = process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1";
 
   try {
