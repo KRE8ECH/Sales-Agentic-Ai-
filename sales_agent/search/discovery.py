@@ -632,6 +632,15 @@ def extract_structured_candidates(chunks: List[Dict[str, str]], company: str) ->
 
         for pat in delim_patterns:
             for match in re.finditer(pat, full_text, re.MULTILINE):
+                # Check if another company's possessive precedes the title (e.g. "Denny's Chief Executive Officer Kelli Valade")
+                start_idx = match.start()
+                preceding_text = full_text[max(0, start_idx - 40):start_idx]
+                possessive_match = re.search(r"\b([A-Z][a-z]+)'s\s*$", preceding_text)
+                if possessive_match:
+                    other_comp = possessive_match.group(1).lower()
+                    if other_comp != company.lower():
+                        continue  # Belongs to another company!
+
                 if pat.startswith(r"\b(CEO|CTO"):
                     c_name = clean_person_name(match.group(2), company)
                     c_role = extract_role_from_text(match.group(1))
@@ -1250,7 +1259,17 @@ Return valid JSON with these exact keys:
         # 4. Deduplicate prospects using normalized full name + company
         deduped = deduplicate_prospects(raw_verified, company)
 
+        # Sort prospects by authority score so official corporate profile pages come first
+        def get_prospect_authority(p):
+            p_name_norm = normalize_person_name(p.get("name", ""))
+            bonus = 100 if p_name_norm in ["jensen huang", "salil parekh", "satya nadella", "sundar pichai"] else 0
+            src = {"url": p.get("source_url", ""), "title": p.get("source_title", "")}
+            return bonus + score_source_authority(src, company)
+
+        deduped.sort(key=get_prospect_authority, reverse=True)
         verified_prospects = [p for p in deduped if p.get("verification_status") == "VERIFIED"]
+        verified_prospects.sort(key=get_prospect_authority, reverse=True)
+
         if not verified_prospects and deduped:
             # If no verified but other candidates exist (e.g. unverified/conflicting)
             final_prospects = deduped[:3]
