@@ -9,6 +9,7 @@ from sales_agent.config import config
 from sales_agent.db import Database
 from sales_agent.llm.ollama_client import OllamaClient
 from sales_agent.agents.orchestrator import OutreachOrchestrator
+from sales_agent.commands import parse_user_command
 
 db = Database()
 ollama = OllamaClient()
@@ -1139,6 +1140,37 @@ HTML_PAGE = """<!DOCTYPE html>
       }
     }
 
+    async function launchProspectFromChat(name, company, role, sourceUrl) {
+      const chatBox = document.getElementById('chat-messages');
+      const notify = document.createElement('div');
+      notify.className = 'message agent';
+      notify.innerHTML = `⚙️ <strong>Launching outreach pipeline for ${name} (${role}) at ${company}...</strong><br>DuckDuckGo search + RAG scoring in progress. Touch #1 will be drafted in <em>Draft - Awaiting Approval</em> status.`;
+      chatBox.appendChild(notify);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      try {
+        const res = await fetch('/api/launch-prospect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, company, designation: role, source_url: sourceUrl })
+        });
+        const data = await res.json();
+        notify.innerHTML = `
+          ✅ <strong>Outreach Initiated for ${name} at ${company} (Lead #${data.lead_id})</strong><br><br>
+          <strong>Touch #1 Drafted (Status: Draft - Awaiting Approval):</strong><br>
+          <em>Subject:</em> ${data.first_touch.subject}<br>
+          <pre style="background:#1e293b; padding:10px; border-radius:6px; margin:8px 0; white-space:pre-wrap;">${data.first_touch.content}</pre>
+          <small style="color:var(--text-muted);">Source Evidence: ${data.first_touch.researched_evidence_used || sourceUrl}</small><br><br>
+          <button onclick="switchTab('sequence'); selectLead(${data.lead_id});" class="btn-primary" style="font-size:11px; padding:6px 12px; cursor:pointer;">👉 Review & Approve in Sequence Viewer</button>
+        `;
+        chatBox.scrollTop = chatBox.scrollHeight;
+        loadPipelineStats();
+        loadLeads();
+      } catch (err) {
+        notify.innerHTML = `<span style="color:#f87171;">Error launching prospect: ${err.message}</span>`;
+      }
+    }
+
     function openAddLeadModal() { document.getElementById('add-lead-modal').classList.add('open'); }
     function closeAddLeadModal() { document.getElementById('add-lead-modal').classList.remove('open'); }
 
@@ -1345,14 +1377,13 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
 
         elif path == "/api/chat":
             msg = payload.get("message", "").strip()
-            import re
+            parsed = parse_user_command(msg)
 
             # Command 1: Specific named lead: "Research [Name] at [Company], [Role]"
-            m_lead = re.search(r"(?:research|prospect|add lead)\s+([A-Za-z\s]+?)\s+at\s+([A-Za-z0-9\s]+?)(?:,\s*([A-Za-z0-9\s]+))?$", msg, re.IGNORECASE)
-            if m_lead and " at " in msg.lower():
-                p_name = m_lead.group(1).strip()
-                p_comp = m_lead.group(2).strip()
-                p_role = m_lead.group(3).strip() if m_lead.group(3) else "Executive"
+            if parsed["type"] == "named_lead":
+                p_name = parsed["name"]
+                p_comp = parsed["company"]
+                p_role = parsed["role"]
                 res = orchestrator.onboard_and_launch_lead(
                     name=p_name,
                     company=p_comp,
@@ -1370,11 +1401,9 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"reply": reply_text})
                 return
 
-            # Command 2: Company-only search: "Research [Company]" (e.g. "Research NVIDIA", "Research Infosys")
-            m_comp = re.search(r"^(?:research|discover|explore|find leads in)\s+([A-Za-z0-9\s\.\&\-]+?)$", msg, re.IGNORECASE)
-            if m_comp:
-                company_target = m_comp.group(1).strip()
-                # Run Company Discovery
+            # Command 2: Company-only search: "Research [Company]" (e.g. "Research NVIDIA", "Research Google")
+            elif parsed["type"] == "company_discovery":
+                company_target = parsed["company"]
                 disc = orchestrator.discover_company(company_target)
                 if disc.get("status") == "NOT_FOUND" or not disc.get("prospects"):
                     reply_text = (
@@ -1391,12 +1420,17 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                         f"<strong>Discovered Public Decision-Makers:</strong><br>"
                     )
                     for idx, p in enumerate(disc.get("prospects", [])):
+                        safe_name = p['name'].replace("'", "\\'")
+                        safe_comp = disc['company_name'].replace("'", "\\'")
+                        safe_desig = p['designation'].replace("'", "\\'")
+                        safe_url = p['source_url'].replace("'", "\\'")
+
                         reply_text += (
                             f"<div style='background:#0b1120; border:1px solid #334155; padding:10px; border-radius:6px; margin:6px 0;'>"
                             f"<strong>{p['name']}</strong> — <em>{p['designation']}</em><br>"
                             f"<small style='color:#94a3b8;'>{p.get('professional_relevance', '')}</small><br>"
                             f"<a href='{p['source_url']}' target='_blank' style='color:#38bdf8; font-size:12px;'>🔗 Source: {p.get('source_title', p['source_url'])}</a><br>"
-                            f"<small style='color:#34d399;'>Tip: Switch to the <strong>🏢 Company Discovery</strong> tab to select this prospect with one click!</small>"
+                            f"<button onclick=\"launchProspectFromChat('{safe_name}', '{safe_comp}', '{safe_desig}', '{safe_url}')\" class='btn-primary' style='margin-top:8px; font-size:11px; padding:4px 10px; cursor:pointer;'>⚡ Research {p['name']}</button>"
                             f"</div>"
                         )
 
@@ -1413,7 +1447,12 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                     )
                 )
             except Exception:
-                reply = "I'm ready to assist! You can type <code>Research NVIDIA</code> to discover decision-makers, or <code>Research Jensen Huang at NVIDIA, CEO</code> to launch direct outreach."
+                reply = (
+                    "I'm ready to assist! Here are the supported commands:<br>"
+                    "• <code>Research NVIDIA</code> (or <code>Research Google</code>) — Discover company overview & verified leadership<br>"
+                    "• <code>Research Satya Nadella at Microsoft, CEO</code> — Direct prospect research & sequence drafting<br>"
+                    "• Or click <strong>⚡ Use Demo Lead</strong> in the top header for instant offline testing!"
+                )
 
             self.send_json({"reply": reply})
             return

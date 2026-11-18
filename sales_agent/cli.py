@@ -11,6 +11,7 @@ from sales_agent.config import config
 from sales_agent.db import Database
 from sales_agent.llm.ollama_client import OllamaClient
 from sales_agent.agents.orchestrator import OutreachOrchestrator
+from sales_agent.commands import parse_user_command
 
 console = Console()
 
@@ -375,36 +376,32 @@ def main():
                 show_decision_logs(db, int(arg))
 
             elif action in ["research", "prospect", "discover"] or (action == "add" and " at " in arg):
-                import re
-                # Case 1: "Research [Name] at [Company], [Role]"
-                if " at " in cmd.lower():
-                    m = re.search(r"(?:research|prospect|add)?\s*([A-Za-z\s]+?)\s+at\s+([A-Za-z0-9\s]+?)(?:,\s*([A-Za-z0-9\s]+))?$", cmd, re.IGNORECASE)
-                    if m:
-                        p_name = m.group(1).strip()
-                        p_comp = m.group(2).strip()
-                        p_role = m.group(3).strip() if m.group(3) else "Executive"
-                        email = f"{p_name.lower().replace(' ', '.')}@{p_comp.lower().replace(' ', '')}.com"
+                parsed = parse_user_command(cmd)
+                if parsed["type"] == "named_lead":
+                    p_name = parsed["name"]
+                    p_comp = parsed["company"]
+                    p_role = parsed["role"]
+                    email = f"{p_name.lower().replace(' ', '.')}@{p_comp.lower().replace(' ', '')}.com"
 
-                        console.print(f"[bold cyan]Initiating Autonomous Pipeline for {p_name} at {p_comp} ({p_role})...[/bold cyan]")
-                        with console.status(f"[bold green]DuckDuckGo search + RAG scoring + Sequence Drafting..."):
-                            result = orchestrator.onboard_and_launch_lead(
-                                name=p_name,
-                                company=p_comp,
-                                role=p_role,
-                                email=email,
-                                industry="Technology"
-                            )
-                        console.print(f"[bold green]✔ Lead onboarded and Touch #1 drafted (Awaiting Approval)![/bold green] (Lead ID: {result['lead_id']})")
-                        show_lead_details(db, result["lead_id"])
-                    else:
-                        console.print("[yellow]Could not parse name and company. Format: 'research <Name> at <Company>, <Role>'[/yellow]")
+                    console.print(f"[bold cyan]Initiating Autonomous Pipeline for {p_name} at {p_comp} ({p_role})...[/bold cyan]")
+                    with console.status(f"[bold green]DuckDuckGo search + RAG scoring + Sequence Drafting..."):
+                        result = orchestrator.onboard_and_launch_lead(
+                            name=p_name,
+                            company=p_comp,
+                            role=p_role,
+                            email=email,
+                            industry="Technology"
+                        )
+                    console.print(f"[bold green]✔ Lead onboarded and Touch #1 drafted (Awaiting Approval)![/bold green] (Lead ID: {result['lead_id']})")
+                    show_lead_details(db, result["lead_id"])
+                elif parsed["type"] == "company_discovery":
+                    handle_company_discovery(orchestrator, db, parsed["company"])
                 else:
-                    # Case 2: Company-only search: "Research [Company]" (e.g. "Research NVIDIA")
                     company_name = arg.strip() if arg else Prompt.ask("Enter Company Name to Discover").strip()
                     if company_name:
                         handle_company_discovery(orchestrator, db, company_name)
                     else:
-                        console.print("[yellow]Please specify a company name. Example: 'research NVIDIA'[/yellow]")
+                        console.print("[yellow]Please specify a company or prospect. Example: 'research NVIDIA' or 'research Satya Nadella at Microsoft, CEO'[/yellow]")
 
             elif action == "add":
                 console.print("[bold cyan]Enter Lead Details for Research & Outreach:[/bold cyan]")

@@ -170,6 +170,60 @@ VERIFIED_OFFLINE_COMPANIES = {
                 "source_title": "Infosys Leadership Profile: Jayesh Sanghrajka"
             }
         ]
+    },
+    "google": {
+        "company_name": "Google",
+        "company_overview": "Google (Alphabet) is a global technology pioneer leading in search, cloud computing (Google Cloud), enterprise AI (Gemini), and autonomous systems.",
+        "business_activities": [
+            "Search and digital advertising infrastructure",
+            "Google Cloud Platform (GCP) and enterprise Vertex AI solutions",
+            "Google DeepMind frontier AI research and Gemini foundation models"
+        ],
+        "recent_announcements": [
+            {
+                "title": "Google Cloud Introduces Gemini 1.5 Pro to Enterprise Customers",
+                "url": "https://blog.google/technology/ai/gemini-1-5-pro-updates/",
+                "snippet": "Google expanded access to Gemini 1.5 Pro with its 1-million-token context window for global enterprise development."
+            },
+            {
+                "title": "Google Announces Next-Generation Custom TPU Accelerators",
+                "url": "https://cloud.google.com/blog/products/compute/introducing-cloud-tpu-v5e",
+                "snippet": "Google Cloud unveiled next-generation Tensor Processing Units engineered for energy-efficient AI model training and inference."
+            }
+        ],
+        "potential_business_needs": [
+            "Expanding enterprise AI adoption across Fortune 500 accounts",
+            "Accelerating outbound sales prospecting for Google Cloud Vertex AI infrastructure"
+        ],
+        "prospects": [
+            {
+                "id": 1,
+                "name": "Sundar Pichai",
+                "designation": "Chief Executive Officer",
+                "company": "Google",
+                "professional_relevance": "Directs overall corporate vision, AI investments, and global strategy across Google and Alphabet.",
+                "source_url": "https://abc.xyz/investor/board-and-management/",
+                "source_title": "Alphabet & Google Board and Management: Sundar Pichai"
+            },
+            {
+                "id": 2,
+                "name": "Thomas Kurian",
+                "designation": "CEO, Google Cloud",
+                "company": "Google",
+                "professional_relevance": "Leads Google Cloud business strategy, enterprise customer relationships, and cloud sales engineering.",
+                "source_url": "https://cloud.google.com/about/leadership",
+                "source_title": "Google Cloud Leadership: Thomas Kurian"
+            },
+            {
+                "id": 3,
+                "name": "Demis Hassabis",
+                "designation": "CEO, Google DeepMind",
+                "company": "Google",
+                "professional_relevance": "Directs frontier artificial intelligence research, model architectures, and scientific breakthrough initiatives.",
+                "source_url": "https://deepmind.google/about/",
+                "source_title": "Google DeepMind Leadership: Demis Hassabis"
+            }
+        ]
     }
 }
 
