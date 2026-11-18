@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { runPipeline } from "@/lib/engine";
 import { BOOT_ID } from "@/lib/boot";
+import { DB_ID } from "@/lib/db";
+import { getSequence, getTouches } from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +12,14 @@ export async function GET(req: Request) {
   if (!leadId) {
     return NextResponse.json({ error: "leadId is required" }, { status: 400 });
   }
+  const probe = getSequence(leadId);
   const result = await runPipeline(leadId);
-  return NextResponse.json({ ...result, instance: BOOT_ID });
+  return NextResponse.json({
+    ...result,
+    instance: BOOT_ID,
+    dbId: DB_ID,
+    seen: { sequence: Boolean(probe), touches: probe ? getTouches(probe.id).length : 0 },
+  });
 }
 
 export async function POST(req: Request) {
@@ -20,5 +28,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "leadId is required" }, { status: 400 });
   }
   const result = await runPipeline(String(body.leadId));
-  return NextResponse.json({ ...result, instance: BOOT_ID }, { status: result.ok ? 200 : 400 });
+  return NextResponse.json({ ...result, instance: BOOT_ID, dbId: DB_ID }, { status: result.ok ? 200 : 400 });
 }
