@@ -202,3 +202,23 @@ NVIDIA retired `meta/llama-3.1-8b-instruct` (end of life 2026-08-26, HTTP 410). 
 now `google/gemma-4-31b-it`, verified live through
 `GET /api/health/llm?probe=1`. `?list=1` returns the live catalog (32 models at time of
 writing) so the model can be swapped without a code change.
+
+### Live verification log (2026-11-18)
+
+- `GET /api/health/llm?probe=1` → `ok:true`, model `google/gemma-4-31b-it`, ~0.9 s.
+- `GET /api/health/llm?draft=1&lead=…` → real drafted email anchored on a specific knowledge-base
+  hook (e.g. Northwind Freight: the lead's own LinkedIn post about replacing a "frankenstack of
+  spreadsheets"; Helio Health: the 12-hospital contract win). JSON parsed cleanly.
+- `GET /api/health/llm?classify=1` → `interested` (conf 1.0) and `objection` (conf 0.95) with
+  quoted evidence and a suggested angle.
+- `GET /api/health` → `dbMode:"memory"`, `llm.source:"nvidia"`, lead/sequence/touch/decision counts.
+- Deep links (`/leads/lead_<slug>`) resolve on any instance thanks to deterministic seeded ids.
+
+### Instance behaviour
+
+Fluid compute starts another instance only when no running instance has spare capacity, and
+invocations share an instance's global state. Under normal single-user traffic the app stays on
+one warm instance, so pipeline/research/sequence state is coherent. Immediately after a deploy
+Vercel may keep an old instance warm briefly, so a request can land on a fresh seed — the app
+handles this gracefully (deterministic lead ids, styled 404, reset control in the sidebar).
+`GET /api/health` exposes the per-boot instance id so this is visible.

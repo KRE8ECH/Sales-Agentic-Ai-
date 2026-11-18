@@ -104,8 +104,8 @@ time, so the audit trail reads consistently.
 | POST | `/api/replies/[id]/classify` | Re-run classification + next-step |
 | GET | `/api/decisions` | Audit log (`?leadId=`, `?agent=`) |
 | GET/POST/PATCH | `/api/playbooks` | Cadence templates |
-| GET | `/api/health` | Instance id, DB mode, LLM status, sim clock, lead count |
-| GET | `/api/health/llm` | Provider status; `?probe=1` makes a real call, `?list=1` lists the live model catalog, `?model=<id>` overrides the model |
+| GET | `/api/health` | Instance id, DB mode, LLM status, sim clock, lead/sequence/touch/decision counts |
+| GET | `/api/health/llm` | Provider status; `?probe=1` real completion, `?list=1` live model catalog, `?draft=1` runs the real drafting agent, `?classify=1&body=…` runs the real classifier, `?model=<id>` overrides the model |
 
 ---
 
