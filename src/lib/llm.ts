@@ -18,6 +18,12 @@ interface ChatMessage {
   content: string;
 }
 
+/** Last failure from chat(), for diagnostics (health probe / server logs). */
+let lastLlmError: string | null = null;
+export function lastLlmError(): string | null {
+  return lastLlmError;
+}
+
 export async function chat(
   messages: ChatMessage[],
   opts: { temperature?: number; maxTokens?: number } = {}
@@ -43,15 +49,20 @@ export async function chat(
       signal: AbortSignal.timeout(45_000),
     });
     if (!res.ok) {
-      console.error("[llm] request failed:", res.status, await res.text());
+      const detail = (await res.text()).slice(0, 300);
+      lastLlmError = `http ${res.status}: ${detail}`;
+      console.error("[llm] request failed:", lastLlmError);
       return null;
     }
     const data = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
-    return data.choices?.[0]?.message?.content ?? null;
+    const text = data.choices?.[0]?.message?.content ?? null;
+    lastLlmError = text ? null : "empty completion";
+    return text;
   } catch (e) {
-    console.error("[llm] error:", e instanceof Error ? e.message : e);
+    lastLlmError = e instanceof Error ? e.message : String(e);
+    console.error("[llm] error:", lastLlmError);
     return null;
   }
 }
