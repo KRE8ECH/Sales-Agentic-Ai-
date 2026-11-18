@@ -25,11 +25,13 @@ export default function Shell({
   now,
   leads,
   dbMode,
+  llm,
 }: {
   children: React.ReactNode;
   now: string;
   leads: Array<{ id: string; name: string; company: string }>;
   dbMode: "file" | "memory";
+  llm: { available: boolean; model: string; source: string };
 }) {
   const pathname = usePathname();
 
@@ -85,6 +87,11 @@ export default function Shell({
 
         <div className="mt-auto px-3 pb-4">
           <SimClock now={now} />
+          <p className="mt-2 flex items-center justify-center gap-1.5 font-mono text-[9.5px] text-ink-faint">
+            <span className={`h-1.5 w-1.5 rounded-full ${llm.available ? "bg-accent" : "bg-warn"}`} />
+            {llm.available ? "llm" : "fallback"} ·{" "}
+            <span className="text-ink-soft">{llm.available ? llm.model : "local brain"}</span>
+          </p>
           {dbMode === "memory" ? (
             <p className="mt-2 rounded-[3px] border border-warn/30 bg-warn-wash px-2 py-1.5 font-mono text-[9.5px] leading-relaxed text-warn">
               ephemeral data · serverless build

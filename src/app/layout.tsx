@@ -9,6 +9,7 @@ import Shell from "@/components/shell";
 import { getSimNow, listLeads } from "@/lib/repo";
 import { ensureSeed } from "@/lib/seed";
 import { DB_MODE } from "@/lib/db";
+import { llmStatus } from "@/lib/llm";
 
 export const metadata: Metadata = {
   title: "Cadence — Outreach Console",
@@ -26,10 +27,11 @@ export default function RootLayout({
   ensureSeed();
   const now = getSimNow();
   const leads = listLeads().map((l) => ({ id: l.id, name: l.name, company: l.company }));
+  const llm = llmStatus();
   return (
     <html lang="en">
       <body>
-        <Shell now={now} leads={leads} dbMode={DB_MODE}>{children}</Shell>
+        <Shell now={now} leads={leads} dbMode={DB_MODE} llm={llm}>{children}</Shell>
       </body>
     </html>
   );
