@@ -1,12 +1,56 @@
 import { NextResponse } from "next/server";
 import { chat, getLastLlmError, getLastLlmRaw, llmStatus } from "@/lib/llm";
+import { draftWithLlm } from "@/lib/engine";
+import { getLead, getHooks } from "@/lib/repo";
+import { researchLead } from "@/lib/brain";
+import type { Touch } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-/** Diagnostic: reports provider status, ?probe=1 makes a real call, ?list=1 lists models. */
+/** Diagnostic: provider status; ?probe=1 real call; ?list=1 model catalog; ?draft=1 runs the real drafting agent. */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const status = llmStatus();
+
+  if (url.searchParams.has("draft")) {
+    const leadId = url.searchParams.get("lead") ?? "lead_northwind-freight";
+    const lead = getLead(leadId);
+    if (!lead) return NextResponse.json({ ok: false, error: "lead not found" }, { status: 404 });
+    let hooks = getHooks(lead.id);
+    if (hooks.length === 0) {
+      hooks = researchLead(lead).hooks.map((h, i) => ({
+        ...h,
+        id: `probe-hook-${i}`,
+        briefId: "probe",
+        leadId: lead.id,
+      }));
+    }
+    const touch: Touch = {
+      id: "probe-touch",
+      sequenceId: "probe",
+      leadId: lead.id,
+      step: 1,
+      channel: "email",
+      intent: "insight",
+      dayOffset: 0,
+      subject: null,
+      body: null,
+      status: "scheduled",
+      sendAt: null,
+      sentAt: null,
+      hookIds: [],
+    };
+    const started = Date.now();
+    const draft = await draftWithLlm(lead, hooks, touch, []);
+    return NextResponse.json({
+      ok: Boolean(draft),
+      latencyMs: Date.now() - started,
+      lead: lead.company,
+      hookCount: hooks.length,
+      draft,
+      error: draft ? null : getLastLlmError(),
+    });
+  }
 
   if (url.searchParams.has("list")) {
     const key = process.env.NVIDIA_API_KEY;

@@ -452,7 +452,7 @@ export async function classifyReplyAsync(body: string, lead: Lead): Promise<Clas
   return classifyReply(body);
 }
 
-async function draftWithLlm(
+export async function draftWithLlm(
   lead: Lead,
   hooks: ResearchHook[],
   touch: Touch,
