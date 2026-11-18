@@ -96,7 +96,7 @@ time, so the audit trail reads consistently.
 | Method | Route | Purpose |
 |--------|-------|---------|
 | GET/POST | `/api/leads` | List / create leads |
-| POST | `/api/pipeline/run` | `{leadId}` — run research → plan → draft → send |
+| GET/POST | `/api/pipeline/run` | `{leadId}` — run research → plan → draft → send (GET reads it from the query string) |
 | POST | `/api/sim/advance` | `{days}` — advance the clock, dispatch, reply, classify, decide |
 | POST | `/api/sim/reset` | Reseed everything |
 | POST | `/api/inbox/simulate` | `{leadId, intent}` — generate a realistic reply, classify, decide |
