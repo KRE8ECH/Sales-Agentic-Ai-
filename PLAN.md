@@ -10,12 +10,12 @@ Phases 0–4 are built and verified end-to-end in the running preview.
 - ✅ Inbox & classification: reply console (simulate + paste), confidence + evidence, accuracy tracking.
 - ✅ Playbooks (create / set default), Analytics (accuracy, reply rate, hook coverage, funnel, intent donut).
 - ✅ Command palette (`/` or `Ctrl/Cmd+K`), bulk "Run pending", simulation clock (+1d/+7d/reset).
-- ⏳ Phase 5: Vercel deploy adapter (SQLite → Turso/Postgres) — documented in README, not yet wired.
+- ✅ Phase 5: deployed to Vercel — https://cadence-outreach.vercel.app (serverless in-memory DB fallback; persistent Turso/Postgres documented as the one remaining seam).
 
 Verified: all 8 seeded leads run the full pipeline; 32 touches, 100% hook coverage, 12 replies
 classified at 100% accuracy against simulator ground truth, next-step agent producing
 continue / pause / resume / escalate / stop with reasons; all routes return 200; production
-build passes.
+build passes; Vercel deployment READY and serving the seeded console.
 
 > Track D · Sales, Growth & Revenue Agents (Advanced)
 > Problem statement: build an agent that researches each lead, drafts a personalized

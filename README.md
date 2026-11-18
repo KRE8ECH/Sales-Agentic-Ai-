@@ -113,12 +113,25 @@ time, so the audit trail reads consistently.
   pauses and auto-resumes, not-interested stops, objections get answered while touches
   remain.
 
-## Deployment notes
+## Deployment
 
-Data lives in `data/cadence.sqlite` (gitignored). That is ideal for local runs and the
-preview environment. On Vercel's serverless filesystem you need a network database —
-point the same repository layer at Turso/libSQL or Postgres (`src/lib/db.ts` is the single
-place to swap). The app is otherwise deployment-ready: `npm run build && npm run start`.
+**Live:** https://cadence-outreach.vercel.app (Vercel project `cadence-outreach`, repo
+`KRE8ECH/Sales-Agentic-Ai-`, branch `arena/5d801a47-sales-agentic-ai`).
+
+Data lives in `data/cadence.sqlite` locally (gitignored). Vercel's serverless filesystem is
+read-only, so the app detects `VERCEL=1` and switches to a per-instance in-memory database
+that seeds itself on first use — everything works, data is ephemeral (the UI shows an
+"ephemeral data · serverless build" badge). Force the same mode locally with
+`CADENCE_DB=memory`.
+
+For persistent multi-instance storage on Vercel, attach a network database (Turso/libSQL or
+Vercel Postgres) and set `DATABASE_URL`; `src/lib/db.ts` is the single seam to implement it.
+Build/deploy: `npm run build && npm run start`, or push to the branch and Vercel deploys.
+
+### Adding the NVIDIA key on Vercel
+
+Project → Settings → Environment Variables → add `NVIDIA_API_KEY` (and optionally
+`NVIDIA_MODEL`) → redeploy. Without it the app runs on the deterministic fallback brain.
 
 ## Design notes (anti-slop)
 
