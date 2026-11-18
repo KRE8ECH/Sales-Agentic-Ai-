@@ -802,6 +802,29 @@ HTML_PAGE = """<!DOCTYPE html>
       if (tabId === 'leads') loadLeads();
       if (tabId === 'logs') loadLogs();
       if (tabId === 'settings') loadSettings();
+      if (tabId === 'detail') {
+        if (activeLeadId) {
+          selectLead(activeLeadId);
+        } else {
+          loadLatestLead();
+        }
+      }
+    }
+
+    async function loadLatestLead() {
+      try {
+        const res = await fetch('/api/leads');
+        const leads = await res.json();
+        if (leads && leads.length > 0) {
+          const latest = leads.reduce((prev, curr) => (prev.id > curr.id) ? prev : curr);
+          selectLead(latest.id);
+        } else {
+          document.getElementById('detail-empty').style.display = 'block';
+          document.getElementById('detail-content').style.display = 'none';
+        }
+      } catch (e) {
+        console.error('Error loading latest lead:', e);
+      }
     }
 
     function setDiscoveryInput(comp) {
@@ -1256,6 +1279,9 @@ HTML_PAGE = """<!DOCTYPE html>
         });
         const data = await res.json();
         thinkingMsg.remove();
+        if (data.lead_id) {
+          activeLeadId = data.lead_id;
+        }
 
         const agentMsg = document.createElement('div');
         agentMsg.className = 'message agent';
@@ -1282,16 +1308,16 @@ HTML_PAGE = """<!DOCTYPE html>
           body: JSON.stringify({ name, company, designation: role, source_url: sourceUrl })
         });
         const data = await res.json();
+        activeLeadId = data.lead_id;
         notify.innerHTML = `
           ✅ <strong>Outreach Initiated for ${name} at ${company} (Lead #${data.lead_id})</strong><br><br>
           <strong>Touch #1 Drafted (Status: Draft - Awaiting Approval):</strong><br>
           <em>Subject:</em> ${data.first_touch.subject}<br>
-          <pre style="background:#1e293b; padding:10px; border-radius:6px; margin:8px 0; white-space:pre-wrap;">${data.first_touch.content}</pre>
+          <pre style="background:#121214; border:1px solid #262626; color:#ededed; padding:12px; border-radius:6px; margin:8px 0; white-space:pre-wrap;">${data.first_touch.content}</pre>
           <small style="color:var(--text-muted);">Source Evidence: ${data.first_touch.researched_evidence_used || sourceUrl}</small><br><br>
-          <button onclick="switchTab('sequence'); selectLead(${data.lead_id});" class="btn-primary" style="font-size:11px; padding:6px 12px; cursor:pointer;">👉 Review & Approve in Sequence Viewer</button>
+          <button onclick="selectLead(${data.lead_id});" class="btn-primary" style="font-size:11px; padding:6px 12px; cursor:pointer;">👉 Review & Approve in Sequence Viewer</button>
         `;
         chatBox.scrollTop = chatBox.scrollHeight;
-        loadPipelineStats();
         loadLeads();
       } catch (err) {
         notify.innerHTML = `<span style="color:#f87171;">Error launching prospect: ${err.message}</span>`;
@@ -1524,9 +1550,10 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                     f"<em>Subject:</em> {res['first_touch'].get('subject')}<br>"
                     f"<pre style='background:#121214; border:1px solid #262626; color:#ededed; padding:12px; border-radius:6px; margin:8px 0; white-space:pre-wrap;'>{res['first_touch'].get('content')}</pre>"
                     f"<small style='color:var(--text-muted);'>Evidence: {res['first_touch'].get('researched_evidence_used')}</small><br><br>"
+                    f"<button onclick=\"selectLead({res['lead_id']})\" class='btn-primary' style='font-size:12px; padding:6px 14px; cursor:pointer; margin-bottom:8px;'>👉 Review in 'RAG Dossier & Sequence' Tab</button><br>"
                     f"👉 <em>Go to 'RAG Dossier & Sequence' tab to review and click 'Approve & Send'.</em>"
                 )
-                self.send_json({"reply": reply_text})
+                self.send_json({"reply": reply_text, "lead_id": res["lead_id"]})
                 return
 
             # Command 2: Company-only search: "Research [Company]" (e.g. "Research NVIDIA", "Research Google")
