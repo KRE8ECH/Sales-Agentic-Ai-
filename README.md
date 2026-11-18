@@ -26,7 +26,7 @@ Production build: `npm run build && npm run start`.
 cp .env.example .env.local   # then paste your key
 ```
 
-`NVIDIA_API_KEY` + `NVIDIA_MODEL` (default `nvidia/nemotron-3.5-lightning-30b-a3b`). With a key set,
+`NVIDIA_API_KEY` + `NVIDIA_MODEL` (default `google/gemma-4-31b-it`). With a key set,
 drafting and classification use the LLM; without one, the deterministic brain takes over
 automatically. The app never breaks either way.
 

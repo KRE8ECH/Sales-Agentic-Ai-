@@ -141,7 +141,7 @@ zero data and with full data; nothing placeholder.
 
 | Decision | Choice |
 |----------|--------|
-| LLM | **NVIDIA NIM free API** (`integrate.api.nvidia.com`, OpenAI-compatible, `NVIDIA_API_KEY`). Default model `nvidia/nemotron-3.5-lightning-30b-a3b`, configurable. **Deterministic fallback brain** runs everything with no key, so the app is never dead in the demo. |
+| LLM | **NVIDIA NIM free API** (`integrate.api.nvidia.com`, OpenAI-compatible, `NVIDIA_API_KEY`). Default model `google/gemma-4-31b-it`, configurable. **Deterministic fallback brain** runs everything with no key, so the app is never dead in the demo. |
 | Offer / ICP | Placeholder, editable in-app: product = **Cadence** (this tool), ICP = sales leaders at 50–500-person B2B companies. Self-referential demo: the tool sells itself. |
 | Research source | **Built-in knowledge base** — 8 seeded fictional-but-realistic companies with news/funding/events. Pluggable slot for a real web-search API later. (Adzuna is job-listing data — not a fit for company research.) |
 | Sending | **Simulated inbox** only (per the brief: never real unsolicited sends). |
@@ -199,6 +199,6 @@ Vercel serverless functions have no writable shared filesystem, so `src/lib/db.t
 ### LLM model
 
 NVIDIA retired `meta/llama-3.1-8b-instruct` (end of life 2026-08-26, HTTP 410). Default is
-now `nvidia/nemotron-3.5-lightning-30b-a3b`, verified live through
+now `google/gemma-4-31b-it`, verified live through
 `GET /api/health/llm?probe=1`. `?list=1` returns the live catalog (32 models at time of
 writing) so the model can be swapped without a code change.

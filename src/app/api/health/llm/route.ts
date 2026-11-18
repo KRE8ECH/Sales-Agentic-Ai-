@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { chat, getLastLlmError, getLastLlmRaw, llmStatus } from "@/lib/llm";
-import { draftWithLlm } from "@/lib/engine";
+import { classifyReplyAsync, draftWithLlm } from "@/lib/engine";
 import { getLead, getHooks } from "@/lib/repo";
 import { researchLead } from "@/lib/brain";
 import type { Touch } from "@/lib/types";
@@ -11,6 +11,22 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const status = llmStatus();
+
+  if (url.searchParams.has("classify")) {
+    const leadId = url.searchParams.get("lead") ?? "lead_northwind-freight";
+    const lead = getLead(leadId);
+    const body = url.searchParams.get("body") ?? "";
+    if (!lead) return NextResponse.json({ ok: false, error: "lead not found" }, { status: 404 });
+    const started = Date.now();
+    const result = await classifyReplyAsync(body, lead);
+    return NextResponse.json({
+      ok: Boolean(body),
+      latencyMs: Date.now() - started,
+      lead: lead.company,
+      result,
+      error: Boolean(body) ? null : "empty body",
+    });
+  }
 
   if (url.searchParams.has("draft")) {
     const leadId = url.searchParams.get("lead") ?? "lead_northwind-freight";
