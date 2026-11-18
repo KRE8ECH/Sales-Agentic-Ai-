@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runPipeline } from "@/lib/engine";
+import { BOOT_ID } from "@/lib/boot";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "leadId is required" }, { status: 400 });
   }
   const result = await runPipeline(leadId);
-  return NextResponse.json(result, { status: result.ok ? 200 : 400 });
+  return NextResponse.json({ ...result, instance: BOOT_ID });
 }
 
 export async function POST(req: Request) {
@@ -19,5 +20,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "leadId is required" }, { status: 400 });
   }
   const result = await runPipeline(String(body.leadId));
-  return NextResponse.json(result, { status: result.ok ? 200 : 400 });
+  return NextResponse.json({ ...result, instance: BOOT_ID }, { status: result.ok ? 200 : 400 });
 }

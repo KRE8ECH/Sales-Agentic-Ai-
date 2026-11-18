@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import { DB_MODE } from "@/lib/db";
 import { llmStatus } from "@/lib/llm";
 import { getSimNow, listLeads } from "@/lib/repo";
-
-// Unique per serverless instance — used to detect whether consecutive requests
-// are served by the same warm instance or rotated to a fresh one.
-const BOOT_ID = crypto.randomUUID();
+import { BOOT_ID } from "@/lib/boot";
 
 export const dynamic = "force-dynamic";
 
