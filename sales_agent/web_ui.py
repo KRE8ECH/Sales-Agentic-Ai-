@@ -956,8 +956,10 @@ HTML_PAGE = """<!DOCTYPE html>
       } else {
         data.prospects.forEach((p, idx) => {
           let roleDisplay = '';
-          if (p.verification_status === 'ROLE_NOT_VERIFIED') {
+          if (p.verification_status === 'ROLE_NOT_VERIFIED' || p.designation === 'Role not verified') {
             roleDisplay = `<span style="color:#f87171; font-weight:600;">• Role not verified</span> <span class="badge" style="background:#7f1d1d; color:#fca5a5; font-size:10px;">ROLE NOT VERIFIED</span>`;
+          } else if (p.verification_status === 'CONFLICTING_SOURCES' || (p.designation && p.designation.includes('Conflicting sources'))) {
+            roleDisplay = `<span style="color:#fbbf24; font-weight:600;">• Conflicting sources – manual verification required</span> <span class="badge" style="background:#78350f; color:#fde68a; font-size:10px;">CONFLICTING SOURCES</span>`;
           } else {
             roleDisplay = `<span style="color:var(--primary); font-size:13px; font-weight:600;">• ${p.designation}</span> <span class="badge" style="background:#065f46; color:#34d399; font-size:10px;">VERIFIED</span>`;
           }
@@ -1509,10 +1511,13 @@ class AgentWebHandler(http.server.BaseHTTPRequestHandler):
                         safe_url = p.get('source_url', '').replace("'", "\\'")
 
                         v_status = p.get("verification_status", "UNVERIFIED")
-                        if v_status == "ROLE_NOT_VERIFIED":
+                        p_desig = p.get("designation", "")
+                        if v_status == "ROLE_NOT_VERIFIED" or p_desig == "Role not verified":
                             role_html = "<span style='color:#f87171; font-weight:600;'>Role not verified</span> <span class='badge' style='background:#7f1d1d; color:#fca5a5; font-size:10px;'>ROLE NOT VERIFIED</span>"
+                        elif v_status == "CONFLICTING_SOURCES" or "Conflicting sources" in p_desig:
+                            role_html = "<span style='color:#fbbf24; font-weight:600;'>Conflicting sources – manual verification required</span> <span class='badge' style='background:#78350f; color:#fde68a; font-size:10px;'>CONFLICTING SOURCES</span>"
                         else:
-                            role_html = f"<span style='color:#38bdf8; font-weight:600;'>{p['designation']}</span> <span class='badge' style='background:#065f46; color:#34d399; font-size:10px;'>VERIFIED</span>"
+                            role_html = f"<span style='color:#38bdf8; font-weight:600;'>{p_desig}</span> <span class='badge' style='background:#065f46; color:#34d399; font-size:10px;'>VERIFIED</span>"
 
                         reply_text += (
                             f"<div style='background:#0b1120; border:1px solid #334155; padding:10px; border-radius:6px; margin:6px 0;'>"

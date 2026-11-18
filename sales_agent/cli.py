@@ -282,12 +282,16 @@ def handle_company_discovery(orchestrator: OutreachOrchestrator, db: Database, c
     console.print("\n[bold]Discovered Prospects & Designation Verification:[/bold]")
     for idx, p in enumerate(prospects):
         v_status = p.get("verification_status", "UNVERIFIED")
-        if v_status == "ROLE_NOT_VERIFIED":
+        p_desig = p.get("designation", "")
+        if v_status == "ROLE_NOT_VERIFIED" or p_desig == "Role not verified":
             status_tag = "[bold red][ROLE NOT VERIFIED][/bold red]"
             role_display = "[bold red]Role not verified[/bold red]"
+        elif v_status == "CONFLICTING_SOURCES" or "Conflicting sources" in p_desig:
+            status_tag = "[bold yellow][CONFLICTING SOURCES][/bold yellow]"
+            role_display = "[bold yellow]Conflicting sources – manual verification required[/bold yellow]"
         else:
             status_tag = "[bold green][VERIFIED][/bold green]"
-            role_display = f"[bold white]{p['designation']}[/bold white]"
+            role_display = f"[bold white]{p_desig}[/bold white]"
 
         console.print(Panel(
             f"[bold cyan][{idx + 1}] {p['name']}[/bold cyan] • {role_display} {status_tag}\n"
