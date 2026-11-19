@@ -246,6 +246,49 @@
       margin-top: 4px;
     }
 
+    /* Teleprompter Subtitles Pill */
+    .voiceover-caption-box {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(7, 21, 36, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.15);
+      border-radius: 9999px;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      max-width: 880px;
+      width: 90%;
+      z-index: 10;
+      transition: all 0.3s ease;
+    }
+
+    .vo-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-blue);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .vo-text {
+      font-size: 13.5px;
+      color: #ffffff;
+      font-weight: 500;
+      line-height: 1.4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     /* Player Progress & Controls Below Video */
     .controls-bar {
       margin-top: 20px;
@@ -476,6 +519,12 @@
       </div>
     </div>
 
+    <!-- Synchronized Subtitles / Teleprompter Pill -->
+    <div class="voiceover-caption-box" id="vo-caption-box">
+      <span class="vo-label">🎙️ NARRATION:</span>
+      <span class="vo-text" id="vo-caption-text">"Most cold emails fail because they pitch the same generic feature to everyone."</span>
+    </div>
+
   </div>
 
   <!-- Player Controls Bar -->
@@ -484,7 +533,7 @@
       <div class="progress-fill" id="progress-fill"></div>
     </div>
     <div class="buttons-row">
-      <div style="display:flex; gap:10px;">
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="ctrl-btn" id="play-btn" onclick="togglePlay()">
           <span>▶ Play Showcase</span>
         </button>
@@ -492,10 +541,20 @@
           <span>↺ Restart</span>
         </button>
         <button class="ctrl-btn" id="audio-btn" onclick="toggleAudio()">
-          <span>🔊 Sound ON</span>
+          <span>🔊 Music Synth ON</span>
+        </button>
+        <button class="ctrl-btn" id="tts-btn" onclick="toggleTTS()" style="background:rgba(56, 189, 248, 0.15); border-color:#38bdf8; color:#38bdf8;">
+          <span>🎙️ AI Speech ON</span>
+        </button>
+        <button class="ctrl-btn" onclick="copyVoiceoverScript()">
+          <span>📋 Copy AI Script</span>
+        </button>
+        <button class="ctrl-btn" id="rec-btn" onclick="recordAndExportVideo()" style="background:rgba(239, 68, 68, 0.15); border-color:#ef4444; color:#f87171;">
+          <span>🔴 Download Video (.webm)</span>
         </button>
       </div>
       <div style="font-size:13px; color:var(--text-muted);">
+        <span id="record-status-text" style="color:var(--accent-green); font-weight:600; display:none; margin-right:8px;">● Recording 20s Reel...</span>
         Press <code style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">Space</code> to Play/Pause &bull; <code style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">R</code> to Restart
       </div>
     </div>
@@ -506,6 +565,7 @@
     let audioCtx = null;
     let isPlaying = false;
     let audioEnabled = true;
+    let ttsEnabled = true;
     let currentTime = 0;
     const totalDuration = 20.0;
     let animFrame = null;
@@ -543,16 +603,79 @@
       setTimeout(() => playTone(783.99, 0.25, 'triangle', 0.18), 200);
     }
 
-    // Storyboard Timeline Scenes
+    // Storyboard Timeline Scenes with Synchronized Voiceover Script
     const scenes = [
-      { id: 'scene-1', start: 0.0, end: 4.0, cueSound: () => playTone(220, 0.3, 'sine', 0.08) },
-      { id: 'scene-2', start: 4.0, end: 8.5, cueSound: () => playTone(330, 0.2, 'triangle', 0.1) },
-      { id: 'scene-3', start: 8.5, end: 13.0, cueSound: () => playTone(440, 0.2, 'sine', 0.12) },
-      { id: 'scene-4', start: 13.0, end: 17.0, cueSound: () => playTone(550, 0.25, 'triangle', 0.12) },
-      { id: 'scene-5', start: 17.0, end: 20.0, cueSound: () => triggerDispatchChime() }
+      { 
+        id: 'scene-1', 
+        start: 0.0, 
+        end: 4.0, 
+        script: "Most cold emails fail because they pitch the same generic feature to everyone.",
+        cueSound: () => playTone(220, 0.3, 'sine', 0.08) 
+      },
+      { 
+        id: 'scene-2', 
+        start: 4.0, 
+        end: 8.5, 
+        script: "SalesAgentic AI fixes this with real-time DuckDuckGo RAG reconnaissance and zero hallucinations.",
+        cueSound: () => playTone(330, 0.2, 'triangle', 0.1) 
+      },
+      { 
+        id: 'scene-3', 
+        start: 8.5, 
+        end: 13.0, 
+        script: "Instead of generic spam, it analyzes target announcements and pitches the exact feature each company needs, driving reply rates to 28.4%.",
+        cueSound: () => playTone(440, 0.2, 'sine', 0.12) 
+      },
+      { 
+        id: 'scene-4', 
+        start: 13.0, 
+        end: 17.0, 
+        script: "Review and dispatch directly into Gmail with one single click.",
+        cueSound: () => playTone(550, 0.25, 'triangle', 0.12) 
+      },
+      { 
+        id: 'scene-5', 
+        start: 17.0, 
+        end: 20.0, 
+        script: "SalesAgentic AI: autonomous sales engineering to scale your outbound pipeline.",
+        cueSound: () => triggerDispatchChime() 
+      }
     ];
 
     let lastActiveScene = null;
+
+    function speakScene(text) {
+      if (!ttsEnabled || !window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.08;
+      u.pitch = 1.0;
+      window.speechSynthesis.speak(u);
+    }
+
+    function toggleTTS() {
+      ttsEnabled = !ttsEnabled;
+      const btn = document.getElementById('tts-btn');
+      if (ttsEnabled) {
+        btn.innerHTML = '<span>🎙️ AI Speech ON</span>';
+        btn.style.color = '#38bdf8';
+        btn.style.borderColor = '#38bdf8';
+      } else {
+        btn.innerHTML = '<span>🔇 AI Speech OFF</span>';
+        btn.style.color = '#ffffff';
+        btn.style.borderColor = 'rgba(255,255,255,0.2)';
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+      }
+    }
+
+    function copyVoiceoverScript() {
+      const fullScript = scenes.map(s => `[${s.start}s - ${s.end}s] ${s.script}`).join('\n\n');
+      navigator.clipboard.writeText(fullScript).then(() => {
+        alert("✅ AI Voiceover Script copied to clipboard!\n\nYou can now paste it directly into ElevenLabs, OpenAI TTS, or Kokoro.");
+      }).catch(() => {
+        prompt("Copy voiceover script:", fullScript);
+      });
+    }
 
     function updatePlayback(stamp) {
       if (!lastStamp) lastStamp = stamp;
@@ -588,13 +711,181 @@
         });
         const activeEl = document.getElementById(active.id);
         if (activeEl) activeEl.classList.add('active');
-        if (isPlaying && active.cueSound) active.cueSound();
+        
+        // Update subtitle teleprompter
+        const captionEl = document.getElementById('vo-caption-text');
+        if (captionEl) captionEl.innerText = `"${active.script}"`;
+
+        if (isPlaying) {
+          if (active.cueSound) active.cueSound();
+          if (ttsEnabled) speakScene(active.script);
+        }
         lastActiveScene = active.id;
       }
 
       if (isPlaying) {
         animFrame = requestAnimationFrame(updatePlayback);
       }
+    }
+
+    function togglePlay() {
+      initAudio();
+      isPlaying = !isPlaying;
+      const btn = document.getElementById('play-btn');
+      if (isPlaying) {
+        btn.innerHTML = '<span>⏸ Pause</span>';
+        if (currentTime >= totalDuration) currentTime = 0;
+        lastStamp = performance.now();
+        animFrame = requestAnimationFrame(updatePlayback);
+      } else {
+        btn.innerHTML = '<span>▶ Play Showcase</span>';
+        cancelAnimationFrame(animFrame);
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+      }
+    }
+
+    function restart() {
+      currentTime = 0;
+      lastStamp = performance.now();
+      if (!isPlaying) togglePlay();
+    }
+
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      const btn = document.getElementById('audio-btn');
+      btn.innerHTML = audioEnabled ? '<span>🔊 Music Synth ON</span>' : '<span>🔇 Music Synth OFF</span>';
+    }
+
+    function seek(e) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const pct = clickX / rect.width;
+      currentTime = pct * totalDuration;
+      lastStamp = performance.now();
+      updatePlayback(performance.now());
+    }
+
+    // MediaRecorder Video Exporter
+    async function recordAndExportVideo() {
+      initAudio();
+      const statusEl = document.getElementById('record-status-text');
+      if (statusEl) statusEl.style.display = 'inline';
+
+      // Reset to 0 and start playback with recording
+      currentTime = 0;
+      isPlaying = true;
+      lastStamp = performance.now();
+      animFrame = requestAnimationFrame(updatePlayback);
+
+      // Create an off-screen canvas to render video frames
+      const canvas = document.createElement('canvas');
+      canvas.width = 1920;
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+
+      const stream = canvas.captureStream(30);
+      let mediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+      } catch (e) {
+        mediaRecorder = new MediaRecorder(stream);
+      }
+
+      const recordedChunks = [];
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'salesagentic-ai-launch.webm';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        if (statusEl) statusEl.style.display = 'none';
+        alert('🎬 Video exported successfully as salesagentic-ai-launch.webm!');
+      };
+
+      mediaRecorder.start();
+
+      // Render frames during playback
+      const renderInterval = setInterval(() => {
+        // Draw dark gradient background
+        const grad = ctx.createRadialGradient(960, 400, 50, 960, 400, 1000);
+        grad.addColorStop(0, '#0e2a44');
+        grad.addColorStop(0.65, '#061422');
+        grad.addColorStop(1, '#020810');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 1920, 1080);
+
+        // Header bar
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.beginPath();
+        ctx.roundRect(64, 48, 480, 56, [28]);
+        ctx.fill();
+
+        ctx.fillStyle = '#10b981';
+        ctx.beginPath();
+        ctx.arc(96, 76, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+        ctx.fillText('SalesAgentic AI Showcase', 120, 84);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 20px monospace';
+        ctx.fillText('| Autonomous Outbound', 400, 84);
+
+        // Current Scene Title and Content
+        let active = scenes.find(s => currentTime >= s.start && currentTime < s.end) || scenes[scenes.length - 1];
+        
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 24px monospace';
+        ctx.fillText(`SCENE: ${active.id.toUpperCase()}`, 64, 180);
+
+        // Subtitle banner at bottom
+        ctx.fillStyle = 'rgba(7, 21, 36, 0.95)';
+        ctx.beginPath();
+        ctx.roundRect(160, 940, 1600, 80, [40]);
+        ctx.fill();
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 18px monospace';
+        ctx.fillText('🎙️ AI NARRATION:', 200, 988);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '22px system-ui, -apple-system, sans-serif';
+        ctx.fillText(`"${active.script}"`, 400, 988);
+
+        if (currentTime >= totalDuration) {
+          clearInterval(renderInterval);
+          mediaRecorder.stop();
+        }
+      }, 1000 / 30);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      }
+      if (e.code === 'KeyR') {
+        e.preventDefault();
+        restart();
+      }
+      if (e.code === 'KeyM') {
+        e.preventDefault();
+        toggleAudio();
+      }
+    });
+
+    // Auto-cue on first interaction
+    document.addEventListener('click', () => { initAudio(); }, { once: true });
+  </script>
     }
 
     function togglePlay() {
