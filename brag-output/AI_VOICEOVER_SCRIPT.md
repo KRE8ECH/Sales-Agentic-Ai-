@@ -1,55 +1,62 @@
-# SalesAgentic AI &mdash; Official Video Voiceover Script
+# SalesAgentic AI &mdash; Official Video Voiceover Script (1 min 41 sec)
 
-This document contains the exact narration script, timestamps, and AI voice generator prompts to produce a high-converting, professional launch video voiceover.
-
----
-
-## 📋 Full Script (One-Click Copy & Paste for AI)
-
-> *"Most cold emails fail because they pitch the same generic feature to everyone. SalesAgentic AI fixes this with real-time DuckDuckGo RAG reconnaissance and zero hallucinations. Instead of generic spam, it analyzes target announcements and pitches the exact feature each company needs, driving executive reply rates up to 28.4%. Review and dispatch directly in Gmail with one click. SalesAgentic AI: autonomous sales engineering to scale your outbound pipeline."*
-
-- **Word count:** 69 words
-- **Target duration:** 20.0 seconds
-- **Ideal Speaking Rate:** 150 – 165 words per minute (confident, energetic, crisp)
+**Total Duration:** 1 minute 41 seconds (101 seconds)  
+**Total Word Count:** 234 words  
+**Optimal Speaking Rate:** 138 – 145 words per minute (confident, clear, professional, natural pauses between scenes)
 
 ---
 
-## ⏱️ Scene-by-Scene Timed Storyboard & Direction
+## 📋 Full Script (One-Click Copy & Paste for AI Voice Generator)
 
-| Time | Scene | On-Screen Visual | Exact Spoken Voiceover Text | Vocal Direction & Tone |
+```text
+Ninety-seven percent of cold outreach fails. Why? Because sales teams blast the exact same generic pitch to thousands of contacts, hoping something sticks. Hallucinated ROI claims and irrelevant spam get your emails sent straight to the junk folder.
+
+Meet SalesAgentic AI. Instead of outdated databases, our autonomous agent executes live DuckDuckGo RAG reconnaissance across public press releases and SEC filings, identifying verified executive decision-makers like Jensen Huang at NVIDIA with clickable source links and zero hallucinations.
+
+Here's the breakthrough. A single product has multiple features, but not every company needs the same thing. SalesAgentic AI automatically matches each company's recent announcements to the specific product capability they care about today. NVIDIA gets pitched Autonomous RAG Recon, while Microsoft gets pitched Multi-Touch Cadences.
+
+This precision lifts executive reply rates by over three-point-four times. Every single email is held in Draft status for human authorization, grounded strictly in public news. With one click, reps can review the draft and dispatch it directly through Gmail with zero friction.
+
+Track your entire outbound pipeline in real time. The built-in analytics dashboard gives you complete visibility into multi-touch funnels, open rates surging past sixty-four percent, and feature attribution matrices that reveal which product capabilities convert highest.
+
+Stop blasting generic emails. Start running autonomous, research-grounded outbound sales engineering that actually scales. Visit SalesAgentic AI and transform your go-to-market pipeline today.
+```
+
+---
+
+## ⏱️ Scene-by-Scene Timed Storyboard & Direction (1:41 Breakdown)
+
+| Timestamp | Scene / Section | Video Screen Action | Exact Voiceover Narration | Pacing & Vocal Direction |
 | :--- | :--- | :--- | :--- | :--- |
-| **0:00 – 0:04** | **1. The Hook** | Split-screen showing 3.2% cold email failure vs. SalesAgentic AI | *"Most cold emails fail because they pitch the same generic feature to everyone."* | Direct, serious, hook-oriented. Emphasize *"fail"* and *"same generic feature"*. |
-| **0:04 – 0:08** | **2. Live Recon** | DuckDuckGo RAG scanner mapping NVIDIA & Jensen Huang | *"SalesAgentic AI fixes this with real-time DuckDuckGo RAG reconnaissance and zero hallucinations."* | Confident, tech-forward. Emphasize *"real-time"* and *"zero hallucinations"*. |
-| **0:08 – 0:13** | **3. Feature Fit** | 3-Card capability matrix (NVIDIA, Microsoft, Slack) | *"Instead of generic spam, it analyzes target announcements and pitches the exact feature each company needs, driving reply rates to 28.4%."* | Dynamic and persuasive. Highlight *"exact feature"* and *"28.4%"*. |
-| **0:13 – 0:17** | **4. 1-Click Dispatch** | Gmail review card with `[✉ Open & Send in Gmail]` | *"Review and dispatch directly into Gmail with one single click."* | Crisp, frictionless, and reassuring. |
-| **0:17 – 0:20** | **5. Outbound Analytics** | Command dashboard ($412k pipeline, 64% opens) | *"SalesAgentic AI: autonomous sales engineering to scale your outbound pipeline."* | Punchy, inspiring closing statement. |
+| **0:00 – 0:16** (16s) | **1. The Problem with Cold Outreach** | Showing mass spam inboxes, 3.2% low reply rates, and generic cold email templates | *"Ninety-seven percent of cold outreach fails. Why? Because sales teams blast the exact same generic pitch to thousands of contacts, hoping something sticks. Hallucinated ROI claims and irrelevant spam get your emails sent straight to the junk folder."* | Serious, empathetic hook. Slight emphasis on *"fails"* and *"junk folder"*. Pause 1 second before transitioning. |
+| **0:16 – 0:34** (18s) | **2. Live DuckDuckGo RAG Recon** | Typing "Research NVIDIA" in Chat / Discovery; live facts and verified leadership popping up | *"Meet SalesAgentic AI. Instead of outdated databases, our autonomous agent executes live DuckDuckGo RAG reconnaissance across public press releases and SEC filings, identifying verified executive decision-makers like Jensen Huang at NVIDIA with clickable source links and zero hallucinations."* | Confident, technological lift. Emphasize *"real-time"*, *"Jensen Huang"*, and *"zero hallucinations"*. |
+| **0:34 – 0:54** (20s) | **3. Dynamic Feature-Fit Matching** | Navigating to Feature-Fit Matrix; showing NVIDIA (RAG Recon), Microsoft (Cadences), Slack (Gmail) | *"Here's the breakthrough. A single product has multiple features, but not every company needs the same thing. SalesAgentic AI automatically matches each company's recent announcements to the specific product capability they care about today. NVIDIA gets pitched Autonomous RAG Recon, while Microsoft gets pitched Multi-Touch Cadences."* | Analytical, persuasive, and insightful. Highlight *"exact feature"* and specific company names. |
+| **0:54 – 1:14** (20s) | **4. Human-in-the-Loop & 1-Click Dispatch** | Showing Touch #1 held in Awaiting Approval, reviewing grounded news quote, clicking `[✉ Open in Gmail]` | *"This precision lifts executive reply rates by over three-point-four times. Every single email is held in Draft status for human authorization, grounded strictly in public news. With one click, reps can review the draft and dispatch it directly through Gmail with zero friction."* | Smooth, reassuring, and frictionless. Emphasize *"human authorization"* and *"one click"*. |
+| **1:14 – 1:30** (16s) | **5. Outbound & Email Analytics** | Navigating to `#tab-analytics`; showing 64.8% open rate, 28.4% reply rate, conversion funnels | *"Track your entire outbound pipeline in real time. The built-in analytics dashboard gives you complete visibility into multi-touch funnels, open rates surging past sixty-four percent, and feature attribution matrices that reveal which product capabilities convert highest."* | Upbeat, data-driven, impressive. Highlight *"sixty-four percent"* and *"pipeline"*. |
+| **1:30 – 1:41** (11s) | **6. Outro & Call to Action** | Displaying SalesAgentic AI logo, command center hero banner, and GitHub link | *"Stop blasting generic emails. Start running autonomous, research-grounded outbound sales engineering that actually scales. Visit SalesAgentic AI and transform your go-to-market pipeline today."* | Inspiring, authoritative, call-to-action tone. Strong final landing. |
 
 ---
 
-## 🎙️ Recommended AI Voice Settings
+## 🎙️ Recommended AI Voice Settings for 1:41 Audio
 
-### Option 1: ElevenLabs (Highest Quality)
-- **Recommended Voice:** **"Adam"** (Professional, Deep B2B Narrator) or **"Brian"** (Tech Co-founder tone) or **"Rachel"** (Crisp Executive)
-- **Model:** `Eleven Multilingual v2` or `Eleven English v1`
-- **Voice Settings:**
-  - **Stability:** `55%` (allows natural conversational cadence)
+### 1. ElevenLabs (Best Quality)
+- **Voice Selection:** 
+  - **"Adam"** (Authoritative B2B Product Demo Voice)
+  - **"Brian"** (Modern Tech Co-founder, natural conversational tempo)
+  - **"Rachel"** (Clear, articulate executive narrator)
+- **Model:** `Eleven Multilingual v2` or `Eleven Turbo v2.5`
+- **Settings:**
+  - **Stability:** `50% - 55%` (keeps it natural and expressive rather than robotic)
   - **Similarity:** `80%`
   - **Style Exaggeration:** `15%`
   - **Speaker Boost:** `Enabled`
 
-### Option 2: OpenAI TTS (via ChatGPT / API)
+### 2. OpenAI Audio API / ChatGPT Voice
 - **Model:** `tts-1-hd`
-- **Voice:** `onyx` (deep authoritative male) or `alloy` (balanced tech founder)
-- **Speed:** `1.05x`
+- **Voice:** `onyx` (deep, trustworthy narrator) or `alloy` (balanced, modern tech narrator)
+- **Speed:** `1.0x` (default speed matches the 1:41 duration cleanly)
 
-### Option 3: Kokoro TTS / PlayHT / Murf
-- **Voice Style:** "Tech Commercial / Explainer Video"
-- **Pacing:** Normal / Slightly Brisk (+5%)
-- **Emotion:** Confident & Knowledgeable
-
----
-
-## 🎧 Audio Bed & Background Music Cue
-- **Tempo:** 120 – 124 BPM
-- **Genre:** Modern Minimal Tech / Synthwave / Upbeat Lo-Fi Groove
-- **Mix Level:** Background music at `-16dB` under voiceover; voiceover mastered at `-1dB` with light compression.
+### 3. Kokoro TTS / PlayHT
+- **Style:** "B2B Tech Commercial / Software Walkthrough"
+- **Pacing:** Normal (1.0x)
+- **Emotion:** Confident, knowledgeable, crisp articulation

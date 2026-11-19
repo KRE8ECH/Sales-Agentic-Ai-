@@ -80,6 +80,31 @@
       animation: pulse 1.6s infinite;
     }
 
+    .mode-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: rgba(255, 255, 255, 0.85);
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .mode-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .mode-btn.active {
+      background: #38bdf8;
+      color: #071524;
+      border-color: #38bdf8;
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.5; transform: scale(0.85); }
@@ -350,9 +375,12 @@
         <span class="live-dot"></span>
         <span>SalesAgentic AI Showcase</span>
         <span style="opacity:0.4;">|</span>
-        <span style="color:var(--accent-blue); font-family:monospace;">Autonomous Outbound</span>
+        <div style="display:inline-flex; gap:6px; margin-left:4px;">
+          <button class="mode-btn active" id="mode-full-btn" onclick="setDurationMode('full')">1:41 Full Video</button>
+          <button class="mode-btn" id="mode-teaser-btn" onclick="setDurationMode('teaser')">20s Teaser</button>
+        </div>
       </div>
-      <div class="timer-badge" id="timer">00:00 / 00:20</div>
+      <div class="timer-badge" id="timer">00:00 / 01:41</div>
     </div>
 
     <!-- SCENE 1: The Outbound Trap (0s - 4s) -->
@@ -567,44 +595,63 @@
     let audioEnabled = true;
     let ttsEnabled = true;
     let currentTime = 0;
-    const totalDuration = 20.0;
-    let animFrame = null;
-    let lastStamp = null;
+    let currentMode = 'full'; // 'full' (1:41) or 'teaser' (20s)
+    let totalDuration = 101.0;
 
-    function initAudio() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+    }
+
+    // Full 1 minute 41 second Storyboard (101 seconds)
+    const scenes101 = [
+      { 
+        id: 'scene-1', 
+        start: 0.0, 
+        end: 16.0, 
+        script: "Ninety-seven percent of cold outreach fails. Why? Because sales teams blast the exact same generic pitch to thousands of contacts, hoping something sticks. Hallucinated ROI claims and irrelevant spam get your emails sent straight to the junk folder.",
+        cueSound: () => playTone(220, 0.4, 'sine', 0.08) 
+      },
+      { 
+        id: 'scene-2', 
+        start: 16.0, 
+        end: 34.0, 
+        script: "Meet SalesAgentic AI. Instead of outdated databases, our autonomous agent executes live DuckDuckGo RAG reconnaissance across public press releases and SEC filings, identifying verified executive decision-makers like Jensen Huang at NVIDIA with clickable source links and zero hallucinations.",
+        cueSound: () => playTone(330, 0.3, 'triangle', 0.1) 
+      },
+      { 
+        id: 'scene-3', 
+        start: 34.0, 
+        end: 54.0, 
+        script: "Here's the breakthrough. A single product has multiple features, but not every company needs the same thing. SalesAgentic AI automatically matches each company's recent announcements to the specific product capability they care about today. NVIDIA gets pitched Autonomous RAG Recon, while Microsoft gets pitched Multi-Touch Cadences.",
+        cueSound: () => playTone(440, 0.3, 'sine', 0.12) 
+      },
+      { 
+        id: 'scene-4', 
+        start: 54.0, 
+        end: 74.0, 
+        script: "This precision lifts executive reply rates by over three-point-four times. Every single email is held in Draft status for human authorization, grounded strictly in public news. With one click, reps can review the draft and dispatch it directly through Gmail with zero friction.",
+        cueSound: () => playTone(550, 0.35, 'triangle', 0.12) 
+      },
+      { 
+        id: 'scene-5', 
+        start: 74.0, 
+        end: 90.0, 
+        script: "Track your entire outbound pipeline in real time. The built-in analytics dashboard gives you complete visibility into multi-touch funnels, open rates surging past sixty-four percent, and feature attribution matrices that reveal which product capabilities convert highest.",
+        cueSound: () => playTone(660, 0.35, 'sine', 0.14) 
+      },
+      { 
+        id: 'scene-5', 
+        start: 90.0, 
+        end: 101.0, 
+        script: "Stop blasting generic emails. Start running autonomous, research-grounded outbound sales engineering that actually scales. Visit SalesAgentic AI and transform your go-to-market pipeline today.",
+        cueSound: () => triggerDispatchChime() 
       }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-    }
+    ];
 
-    function playTone(freq, dur = 0.15, type = 'sine', gainVal = 0.1) {
-      if (!audioEnabled || !audioCtx) return;
-      try {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + dur);
-      } catch(e) {}
-    }
-
-    function triggerDispatchChime() {
-      initAudio();
-      playTone(523.25, 0.12, 'sine', 0.15);
-      setTimeout(() => playTone(659.25, 0.14, 'sine', 0.15), 100);
-      setTimeout(() => playTone(783.99, 0.25, 'triangle', 0.18), 200);
-    }
-
-    // Storyboard Timeline Scenes with Synchronized Voiceover Script
-    const scenes = [
+    // Quick 20-second Teaser Storyboard
+    const scenes20 = [
       { 
         id: 'scene-1', 
         start: 0.0, 
@@ -641,6 +688,24 @@
         cueSound: () => triggerDispatchChime() 
       }
     ];
+
+    let scenes = scenes101;
+
+    function setDurationMode(mode) {
+      currentMode = mode;
+      if (mode === 'full') {
+        totalDuration = 101.0;
+        scenes = scenes101;
+        document.getElementById('mode-full-btn').classList.add('active');
+        document.getElementById('mode-teaser-btn').classList.remove('active');
+      } else {
+        totalDuration = 20.0;
+        scenes = scenes20;
+        document.getElementById('mode-teaser-btn').classList.add('active');
+        document.getElementById('mode-full-btn').classList.remove('active');
+      }
+      restart();
+    }
 
     let lastActiveScene = null;
 
@@ -694,9 +759,7 @@
       // Progress bar and timer text
       const pct = (currentTime / totalDuration) * 100;
       document.getElementById('progress-fill').style.width = pct + '%';
-      const curSec = Math.floor(currentTime);
-      const strSec = curSec < 10 ? '0' + curSec : curSec;
-      document.getElementById('timer').innerText = `00:${strSec} / 00:20`;
+      document.getElementById('timer').innerText = `${formatTime(currentTime)} / ${formatTime(totalDuration)}`;
 
       // Scene switching
       let active = scenes.find(s => currentTime >= s.start && currentTime < s.end);
@@ -769,7 +832,10 @@
     async function recordAndExportVideo() {
       initAudio();
       const statusEl = document.getElementById('record-status-text');
-      if (statusEl) statusEl.style.display = 'inline';
+      if (statusEl) {
+        statusEl.innerText = `● Recording ${formatTime(totalDuration)} Reel...`;
+        statusEl.style.display = 'inline';
+      }
 
       // Reset to 0 and start playback with recording
       currentTime = 0;

@@ -2402,5 +2402,21 @@ Return valid JSON with these exact keys:
             "retrieval_timestamp": retrieval_timestamp,
             "search_warning": None if has_verified_leadership else f"Company overview retrieved, but executive leadership designations for '{company}' could not be verified in public official leadership pages or verified announcements."
         }
-        final_result["feature_fit"] = self.evaluate_feature_fit(final_result, features)
+        # Safely extract product features from my_product_settings if present
+        features = None
+        if my_product_settings and my_product_settings.get("product_features"):
+            try:
+                raw_feats = my_product_settings["product_features"]
+                if isinstance(raw_feats, str):
+                    features = json.loads(raw_feats)
+                elif isinstance(raw_feats, list):
+                    features = raw_feats
+            except Exception:
+                features = None
+
+        try:
+            final_result["feature_fit"] = self.evaluate_feature_fit(final_result, features)
+        except Exception as e:
+            logger.warning(f"Feature fit evaluation fallback in live discovery: {e}")
+            final_result["feature_fit"] = self.evaluate_feature_fit(final_result, None)
         return final_result
