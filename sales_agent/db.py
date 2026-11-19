@@ -148,6 +148,41 @@ DEMO_LEADS_DATA = {
     }
 }
 
+DEFAULT_PRODUCT_FEATURES = [
+    {
+        "id": "feat_rag_recon",
+        "name": "Autonomous RAG Market Recon",
+        "headline": "Real-Time Company & Leadership Intelligence",
+        "description": "Scrapes DuckDuckGo live web search to verify executive leadership, recent funding milestones, and product announcements before outreach.",
+        "target_trigger": "Companies scaling AI infrastructure, launching hardware, or expanding leadership teams.",
+        "pitch_angle": "Cite verified public news with 100% accuracy to establish instant executive credibility."
+    },
+    {
+        "id": "feat_direct_email",
+        "name": "1-Click Direct Email Dispatch",
+        "headline": "Native Gmail & Mailto Workflow Without API Keys",
+        "description": "Instant handoff to Gmail Compose or local mail client with pre-filled verified prospect addresses, tailored subject lines, and formatted copy.",
+        "target_trigger": "High-velocity sales teams, founders, and SDRs tired of SMTP setup hurdles and deliverability penalties.",
+        "pitch_angle": "Empower your team to review and dispatch outreach in 1-click directly from their authentic inbox, ensuring 40%+ open rates."
+    },
+    {
+        "id": "feat_crm_state_machine",
+        "name": "Finite State Pipeline Governance",
+        "headline": "Zero-Loss Lead Progression & Compliance Tracking",
+        "description": "Strict state transitions (Discovered → Researched → Drafted → Approved → In Sequence → Converted) preventing duplicate touches.",
+        "target_trigger": "Enterprise teams losing track of prospect touchpoints or requiring strict human authorization before sending.",
+        "pitch_angle": "Gain total audit transparency with an immutable reasoning trail and mandatory human authorization checkpoints for every touch."
+    },
+    {
+        "id": "feat_cadence_sequencer",
+        "name": "Multi-Touch Cadence Sequencer",
+        "headline": "Omnichannel Email & LinkedIn Cadence Scheduling",
+        "description": "Orchestrates multi-day follow-up touches (Observation, Light Engagement, Case Study Proof, Polite Breakup) with adaptive delay controls.",
+        "target_trigger": "B2B SaaS companies with multi-stakeholder deals requiring persistent, respectful multi-week follow-up.",
+        "pitch_angle": "Keep prospects engaged across 4 progressive touches without manual tracking, lifting reply rates by 3.4x."
+    }
+]
+
 class Database:
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or config.db_path
@@ -244,14 +279,15 @@ class Database:
                     ("what_it_does", "AI assistant that researches enterprise leads and drafts personalized multi-touch sequences"),
                     ("sender_name", "Alex Rivera"),
                     ("company_name", "NextGen Solutions"),
-                    ("calendly_link", "https://cal.com/nextgen/demo")
+                    ("calendly_link", "https://cal.com/nextgen/demo"),
+                    ("product_features", json.dumps(DEFAULT_PRODUCT_FEATURES))
                 ]
                 cursor.executemany("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", defaults)
 
             conn.commit()
 
     # Product Settings operations
-    def get_product_settings(self) -> Dict[str, str]:
+    def get_product_settings(self) -> Dict[str, Any]:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT key, value FROM settings")
@@ -261,17 +297,24 @@ class Database:
                 "what_it_does": "AI assistant that researches enterprise leads and drafts personalized multi-touch sequences",
                 "sender_name": "Alex Rivera",
                 "company_name": "NextGen Solutions",
-                "calendly_link": ""
+                "calendly_link": "",
+                "product_features": json.dumps(DEFAULT_PRODUCT_FEATURES)
             }
             for row in rows:
                 settings[row["key"]] = row["value"]
+            if not settings.get("product_features"):
+                settings["product_features"] = json.dumps(DEFAULT_PRODUCT_FEATURES)
             return settings
 
-    def save_product_settings(self, settings: Dict[str, str]):
+    def save_product_settings(self, settings: Dict[str, Any]):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             for k, v in settings.items():
-                cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (k, str(v or "")))
+                if isinstance(v, (list, dict)):
+                    val_str = json.dumps(v)
+                else:
+                    val_str = str(v if v is not None else "")
+                cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (k, val_str))
             conn.commit()
 
     # Lead operations

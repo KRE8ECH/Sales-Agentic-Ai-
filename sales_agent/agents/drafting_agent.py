@@ -92,8 +92,15 @@ Provide your response as a valid JSON object with these exact keys:
 }}
 """
 
+        feature_fit = dossier.get("feature_fit") or {}
+        feature_name = feature_fit.get("feature") or feature_fit.get("name")
+        tailored_hook = feature_fit.get("tailored_pitch_hook") or ""
+
         # Grounded fallback draft without invented statistics
-        if has_real_facts:
+        if tailored_hook:
+            opening = tailored_hook
+            evidence_used = f"Referenced tailored feature-fit hook: '{tailored_hook[:100]}...'"
+        elif has_real_facts:
             first_fact = raw_facts[0].get("fact", "") if isinstance(raw_facts[0], dict) else raw_facts[0]
             evidence_used = f"Referenced verified public news: '{first_fact[:100]}...'"
             opening = f"Noticed {lead['company']}'s recent announcement regarding {first_fact[:90]}."
@@ -101,12 +108,14 @@ Provide your response as a valid JSON object with these exact keys:
             evidence_used = "Role-based inquiry (public news NOT FOUND)"
             opening = f"Reaching out to you as {lead.get('role', 'leader')} at {lead['company']}."
 
+        pitch_intro = f"At {company_name}, we built {product_name} with {feature_name} to {what_it_does.rstrip('.')}." if feature_name else f"At {company_name}, we built {product_name} to {what_it_does.rstrip('.')}."
+
         fallback_draft = {
             "subject": f"Thought regarding {lead['company']}" if channel == "email" else "",
             "content": (
                 f"Hi {lead['name']},\n\n"
                 f"{opening}\n\n"
-                f"At {company_name}, we built {product_name} to {what_it_does.rstrip('.')}.\n\n"
+                f"{pitch_intro}\n\n"
                 f"Would you be open to a brief 10-minute introductory conversation this week?\n\n"
                 f"Best regards,\n{sender_name}\n{company_name}"
             ),

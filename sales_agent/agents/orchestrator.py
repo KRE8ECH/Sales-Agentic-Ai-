@@ -56,6 +56,30 @@ class OutreachOrchestrator:
 
         return discovery_result
 
+    def match_companies_for_product(
+        self,
+        category: Optional[str] = None,
+        custom_companies: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Discovers target companies and ranks them based on feature-need fit
+        using the user's saved product settings and capabilities.
+        """
+        settings = self.db.get_product_settings()
+        matched = self.discovery_engine.auto_match_companies_for_product(
+            my_product_settings=settings,
+            category=category,
+            custom_companies=custom_companies
+        )
+        self.db.log_decision(
+            lead_id=0,
+            stage="MARKET_FEATURE_MATCHING",
+            decision="FEATURE_MATCH_COMPLETED",
+            reasoning=f"Evaluated market demand against {len(matched)} target enterprises (category: {category or 'all'}). Ranked companies by product feature fit.",
+            metadata={"companies_count": len(matched), "category": category or "all"}
+        )
+        return matched
+
     def select_and_launch_prospect(
         self,
         company: str,
@@ -116,6 +140,11 @@ class OutreachOrchestrator:
                     for idx, ann in enumerate(context_dossier.get("recent_announcements", []))
                 ]
             }
+            if context_dossier.get("feature_fit"):
+                lead_dossier["feature_fit"] = context_dossier["feature_fit"]
+                hook = context_dossier["feature_fit"].get("tailored_pitch_hook")
+                if hook:
+                    lead_dossier["tailored_hooks"].insert(0, hook)
             self.db.save_research_dossier(lead_id, lead_dossier)
             dossier = lead_dossier
         else:

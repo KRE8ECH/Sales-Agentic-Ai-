@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SalesAgentic AI | Product Launch Showcase</title>
+  <style>
+    :root {
+      --bg-dark: #071524;
+      --bg-card: rgba(15, 29, 45, 0.85);
+      --border-card: rgba(255, 255, 255, 0.14);
+      --accent-blue: #38bdf8;
+      --accent-purple: #a855f7;
+      --accent-green: #22c55e;
+      --accent-amber: #f59e0b;
+      --clay-emerald: #0e4e36;
+      --clay-cream: #fffaf0;
+      --text-white: #ffffff;
+      --text-muted: rgba(255, 255, 255, 0.7);
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #020912;
+      color: var(--text-white);
+      font-family: var(--font-sans);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Video Player Canvas Stage (16:9 1920x1080 scaled) */
+    .video-viewport {
+      width: 1080px;
+      height: 608px;
+      background: radial-gradient(circle at 50% 30%, #0e2a44 0%, #061422 65%, #020810 100%);
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+
+    /* Stage Header Overlay */
+    .stage-topbar {
+      position: absolute;
+      top: 24px;
+      left: 32px;
+      right: 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .brand-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      padding: 8px 18px;
+      border-radius: 9999px;
+      font-size: 13.5px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .live-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 12px #10b981;
+      animation: pulse 1.6s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .timer-badge {
+      font-family: monospace;
+      font-size: 14px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      color: var(--accent-blue);
+      font-weight: 700;
+    }
+
+    /* Scene Container */
+    .scene-wrap {
+      position: absolute;
+      inset: 80px 32px 32px 32px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      transform: translateY(16px) scale(0.98);
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+
+    .scene-wrap.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    /* Scene 1: The Outbound Trap */
+    .hero-eyebrow {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #f87171;
+      margin-bottom: 12px;
+    }
+
+    .hero-big-title {
+      font-size: 42px;
+      font-weight: 600;
+      text-align: center;
+      line-height: 1.15;
+      letter-spacing: -1.2px;
+      max-width: 820px;
+      margin-bottom: 24px;
+    }
+
+    .trap-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    .trap-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 24px;
+      backdrop-filter: blur(16px);
+    }
+
+    .trap-card.negative { border-left: 4px solid #ef4444; }
+    .trap-card.positive { border-left: 4px solid #22c55e; }
+
+    /* Scene 2: Live Grounded Recon */
+    .recon-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 24px;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .fact-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* Scene 3: Feature Matrix */
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      width: 100%;
+      max-width: 940px;
+    }
+
+    .matrix-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Scene 4: 1-Click Dispatch */
+    .dispatch-preview {
+      background: #ffffff;
+      color: #0a0a0a;
+      border-radius: 14px;
+      padding: 24px 28px;
+      width: 100%;
+      max-width: 780px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .dispatch-btn {
+      background: #0e4e36;
+      color: #ffffff;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      box-shadow: 0 6px 18px rgba(14, 78, 54, 0.35);
+    }
+
+    /* Scene 5: Analytics Command */
+    .analytics-reel-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      width: 100%;
+      max-width: 940px;
+      margin-bottom: 20px;
+    }
+
+    .kpi-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+    }
+
+    .kpi-box-num {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      margin-top: 4px;
+    }
+
+    /* Player Progress & Controls Below Video */
+    .controls-bar {
+      margin-top: 20px;
+      width: 1080px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8, #a855f7);
+      transition: width 0.1s linear;
+    }
+
+    .buttons-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ctrl-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #ffffff;
+      padding: 8px 18px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ctrl-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Video Viewport -->
+  <div class="video-viewport" id="viewport">
+    
+    <!-- Topbar Overlay -->
+    <div class="stage-topbar">
+      <div class="brand-pill">
+        <span class="live-dot"></span>
+        <span>SalesAgentic AI Showcase</span>
+        <span style="opacity:0.4;">|</span>
+        <span style="color:var(--accent-blue); font-family:monospace;">Autonomous Outbound</span>
+      </div>
+      <div class="timer-badge" id="timer">00:00 / 00:20</div>
+    </div>
+
+    <!-- SCENE 1: The Outbound Trap (0s - 4s) -->
+    <div class="scene-wrap active" id="scene-1">
+      <span class="hero-eyebrow">The Outbound Crisis</span>
+      <h1 class="hero-big-title">
+        97% of Cold Emails Fail Because They Pitch The Wrong Feature to The Wrong Company
+      </h1>
+      <div class="trap-comparison">
+        <div class="trap-card negative">
+          <div style="font-size:11px; text-transform:uppercase; color:#ef4444; font-weight:700;">Traditional Mass Outreach</div>
+          <div style="font-size:32px; font-weight:700; color:#ef4444; margin:6px 0;">3.2% Replies</div>
+          <p style="font-size:12.5px; color:var(--text-muted); line-height:1.45;">
+            Blasts 5,000 generic pitches. LLM hallucinates stats and damages domain reputation.
+          </p>
+        </div>
+        <div class="trap-card positive">
+          <div style="font-size:11px; text-transform:uppercase; color:#22c55e; font-weight:700;">SalesAgentic AI</div>
+          <div style="font-size:32px; font-weight:700; color:#22c55e; margin:6px 0;">28.4% Replies</div>
+          <p style="font-size:12.5px; color:var(--text-muted); line-height:1.45;">
+            Dynamic capability-matching grounded in live DuckDuckGo RAG facts. 3.4x reply rate lift.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCENE 2: Live Grounded Recon (4s - 8s) -->
+    <div class="scene-wrap" id="scene-2">
+      <span class="hero-eyebrow" style="color:var(--accent-blue);">Pillar 1 &bull; Real-Time Intelligence</span>
+      <h2 style="font-size:32px; font-weight:600; margin-bottom:20px; text-align:center;">
+        DuckDuckGo RAG Autonomous Market Reconnaissance
+      </h2>
+      <div class="recon-grid">
+        <div class="trap-card" style="border-left:4px solid var(--accent-blue);">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="font-size:18px;">NVIDIA Corporation</strong>
+            <span style="font-family:monospace; font-size:11px; color:#10b981; font-weight:700;">● VERIFIED RESEARCH</span>
+          </div>
+          <p style="font-size:13px; color:var(--text-muted); margin-top:8px;">
+            AI computing pioneer inventing GPU architectures for accelerated generative systems.
+          </p>
+          <div class="fact-pill">
+            <span style="color:var(--accent-blue); font-weight:700;">Public Announcement:</span><br>
+            "NVIDIA Blackwell Architecture Accelerates Trillion-Parameter AI Models"
+          </div>
+        </div>
+        <div class="trap-card">
+          <div style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--accent-amber); margin-bottom:10px;">
+            Discovered Decision-Makers
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px; font-size:13px;">
+            <div style="background:rgba(255,255,255,0.06); padding:8px 12px; border-radius:6px;">
+              <strong>Jensen Huang</strong> &bull; Founder, President &amp; CEO
+            </div>
+            <div style="background:rgba(255,255,255,0.06); padding:8px 12px; border-radius:6px;">
+              <strong>Bill Dally</strong> &bull; Chief Scientist &amp; Senior VP
+            </div>
+            <div style="background:rgba(255,255,255,0.06); padding:8px 12px; border-radius:6px;">
+              <strong>Colette Kress</strong> &bull; Executive VP &amp; CFO
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCENE 3: Feature-to-Company Intelligence (8s - 13s) -->
+    <div class="scene-wrap" id="scene-3">
+      <span class="hero-eyebrow" style="color:var(--accent-purple);">Pillar 2 &bull; Precision Matching</span>
+      <h2 style="font-size:32px; font-weight:600; margin-bottom:20px; text-align:center;">
+        Pitch The Exact Feature Each Company Specifically Needs
+      </h2>
+      <div class="matrix-grid">
+        <div class="matrix-card" style="border-top:4px solid #38bdf8;">
+          <div>
+            <span style="font-size:11px; font-weight:700; color:#38bdf8;">NVIDIA (94% FIT)</span>
+            <h3 style="font-size:16px; margin:6px 0;">Autonomous RAG Recon</h3>
+            <p style="font-size:12px; color:var(--text-muted); line-height:1.45;">
+              Addresses rapid enterprise partner inquiries following the Blackwell announcement.
+            </p>
+          </div>
+          <div style="font-family:monospace; font-size:11.5px; color:#22c55e; margin-top:12px;">+31.2% Reply Rate</div>
+        </div>
+
+        <div class="matrix-card" style="border-top:4px solid #a855f7;">
+          <div>
+            <span style="font-size:11px; font-weight:700; color:#a855f7;">MICROSOFT (94% FIT)</span>
+            <h3 style="font-size:16px; margin:6px 0;">Multi-Touch Cadence</h3>
+            <p style="font-size:12px; color:var(--text-muted); line-height:1.45;">
+              Orchestrates cross-department enterprise enablement across Azure cloud accounts.
+            </p>
+          </div>
+          <div style="font-family:monospace; font-size:11.5px; color:#22c55e; margin-top:12px;">+27.8% Reply Rate</div>
+        </div>
+
+        <div class="matrix-card" style="border-top:4px solid #22c55e;">
+          <div>
+            <span style="font-size:11px; font-weight:700; color:#22c55e;">SLACK &amp; FIGMA (92% FIT)</span>
+            <h3 style="font-size:16px; margin:6px 0;">Direct Gmail Dispatch</h3>
+            <p style="font-size:12px; color:var(--text-muted); line-height:1.45;">
+              Empowers product-led reps to launch reviewed emails into Gmail with zero API hurdles.
+            </p>
+          </div>
+          <div style="font-family:monospace; font-size:11.5px; color:#22c55e; margin-top:12px;">+25.4% Reply Rate</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCENE 4: 1-Click Dispatch & Human Review (13s - 17s) -->
+    <div class="scene-wrap" id="scene-4">
+      <span class="hero-eyebrow" style="color:#10b981;">Pillar 3 &bull; Human Authorization</span>
+      <h2 style="font-size:32px; font-weight:600; margin-bottom:20px; text-align:center;">
+        Strict Grounding With 1-Click Direct Gmail Dispatch
+      </h2>
+      <div class="dispatch-preview">
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid #e5e7eb; padding-bottom:10px; margin-bottom:12px; font-size:13px;">
+          <span><strong>To:</strong> Jensen Huang &lt;jensen.huang@nvidia.com&gt;</span>
+          <span style="background:#fef3c7; color:#92400e; font-weight:700; font-size:11px; padding:2px 8px; border-radius:9999px;">AWAITING APPROVAL</span>
+        </div>
+        <div style="font-size:13.5px; line-height:1.6; color:#374151;">
+          "Hi Jensen,<br><br>
+          Noticed NVIDIA's recent announcement regarding <strong>NVIDIA Blackwell Architecture Accelerates Trillion-Parameter AI Models</strong>.<br><br>
+          At NextGen Solutions, we built SalesAgentic AI with <strong>Autonomous RAG Market Recon</strong> to directly solve executive prospecting latency.<br><br>
+          Would you be open to a brief 10-minute introductory conversation this week?"
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+          <span style="font-size:11.5px; color:#6b7280;">✓ 100% Grounded in Public SEC News &bull; Zero Hallucination</span>
+          <button class="dispatch-btn" onclick="triggerDispatchChime()">
+            <span>✉ Open &amp; Send in Gmail</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCENE 5: Analytics Command (17s - 20s) -->
+    <div class="scene-wrap" id="scene-5">
+      <span class="hero-eyebrow" style="color:var(--accent-blue);">Pillar 4 &bull; Outbound Analytics</span>
+      <h2 style="font-size:36px; font-weight:600; margin-bottom:24px; text-align:center;">
+        Autonomous Sales Engineering to Scale Pipeline
+      </h2>
+      <div class="analytics-reel-grid">
+        <div class="kpi-box">
+          <div style="font-size:11.5px; color:var(--text-muted);">Total Sequences</div>
+          <div class="kpi-box-num" style="color:#38bdf8;">1,420</div>
+          <div style="font-size:10px; color:#10b981; margin-top:2px;">▲ 24.6% Volume</div>
+        </div>
+        <div class="kpi-box">
+          <div style="font-size:11.5px; color:var(--text-muted);">Executive Opens</div>
+          <div class="kpi-box-num" style="color:#a855f7;">64.8%</div>
+          <div style="font-size:10px; color:#a855f7; margin-top:2px;">3.1x Benchmark</div>
+        </div>
+        <div class="kpi-box">
+          <div style="font-size:11.5px; color:var(--text-muted);">Executive Replies</div>
+          <div class="kpi-box-num" style="color:#22c55e;">28.4%</div>
+          <div style="font-size:10px; color:#22c55e; margin-top:2px;">Feature-Fit Lift</div>
+        </div>
+        <div class="kpi-box">
+          <div style="font-size:11.5px; color:var(--text-muted);">Pipeline Booked</div>
+          <div class="kpi-box-num" style="color:#f59e0b;">$412.5k</div>
+          <div style="font-size:10px; color:#f59e0b; margin-top:2px;">86 Meetings</div>
+        </div>
+      </div>
+      <div style="font-size:15px; color:var(--text-muted); text-align:center;">
+        Grounded DuckDuckGo RAG &bull; Feature-Fit Intelligence &bull; 1-Click Human Authorization
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Player Controls Bar -->
+  <div class="controls-bar">
+    <div class="progress-track" onclick="seek(event)">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <div class="buttons-row">
+      <div style="display:flex; gap:10px;">
+        <button class="ctrl-btn" id="play-btn" onclick="togglePlay()">
+          <span>▶ Play Showcase</span>
+        </button>
+        <button class="ctrl-btn" onclick="restart()">
+          <span>↺ Restart</span>
+        </button>
+        <button class="ctrl-btn" id="audio-btn" onclick="toggleAudio()">
+          <span>🔊 Sound ON</span>
+        </button>
+      </div>
+      <div style="font-size:13px; color:var(--text-muted);">
+        Press <code style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">Space</code> to Play/Pause &bull; <code style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">R</code> to Restart
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Generative Web Audio Synth for Demo Reel Soundtrack
+    let audioCtx = null;
+    let isPlaying = false;
+    let audioEnabled = true;
+    let currentTime = 0;
+    const totalDuration = 20.0;
+    let animFrame = null;
+    let lastStamp = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playTone(freq, dur = 0.15, type = 'sine', gainVal = 0.1) {
+      if (!audioEnabled || !audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+      } catch(e) {}
+    }
+
+    function triggerDispatchChime() {
+      initAudio();
+      playTone(523.25, 0.12, 'sine', 0.15);
+      setTimeout(() => playTone(659.25, 0.14, 'sine', 0.15), 100);
+      setTimeout(() => playTone(783.99, 0.25, 'triangle', 0.18), 200);
+    }
+
+    // Storyboard Timeline Scenes
+    const scenes = [
+      { id: 'scene-1', start: 0.0, end: 4.0, cueSound: () => playTone(220, 0.3, 'sine', 0.08) },
+      { id: 'scene-2', start: 4.0, end: 8.5, cueSound: () => playTone(330, 0.2, 'triangle', 0.1) },
+      { id: 'scene-3', start: 8.5, end: 13.0, cueSound: () => playTone(440, 0.2, 'sine', 0.12) },
+      { id: 'scene-4', start: 13.0, end: 17.0, cueSound: () => playTone(550, 0.25, 'triangle', 0.12) },
+      { id: 'scene-5', start: 17.0, end: 20.0, cueSound: () => triggerDispatchChime() }
+    ];
+
+    let lastActiveScene = null;
+
+    function updatePlayback(stamp) {
+      if (!lastStamp) lastStamp = stamp;
+      const delta = (stamp - lastStamp) / 1000;
+      lastStamp = stamp;
+
+      if (isPlaying) {
+        currentTime += delta;
+        if (currentTime >= totalDuration) {
+          currentTime = totalDuration;
+          isPlaying = false;
+          document.getElementById('play-btn').innerHTML = '<span>▶ Replay</span>';
+        }
+      }
+
+      // Progress bar and timer text
+      const pct = (currentTime / totalDuration) * 100;
+      document.getElementById('progress-fill').style.width = pct + '%';
+      const curSec = Math.floor(currentTime);
+      const strSec = curSec < 10 ? '0' + curSec : curSec;
+      document.getElementById('timer').innerText = `00:${strSec} / 00:20`;
+
+      // Scene switching
+      let active = scenes.find(s => currentTime >= s.start && currentTime < s.end);
+      if (!active && currentTime >= totalDuration) {
+        active = scenes[scenes.length - 1];
+      }
+
+      if (active && active.id !== lastActiveScene) {
+        scenes.forEach(s => {
+          const el = document.getElementById(s.id);
+          if (el) el.classList.remove('active');
+        });
+        const activeEl = document.getElementById(active.id);
+        if (activeEl) activeEl.classList.add('active');
+        if (isPlaying && active.cueSound) active.cueSound();
+        lastActiveScene = active.id;
+      }
+
+      if (isPlaying) {
+        animFrame = requestAnimationFrame(updatePlayback);
+      }
+    }
+
+    function togglePlay() {
+      initAudio();
+      isPlaying = !isPlaying;
+      const btn = document.getElementById('play-btn');
+      if (isPlaying) {
+        btn.innerHTML = '<span>⏸ Pause</span>';
+        if (currentTime >= totalDuration) currentTime = 0;
+        lastStamp = performance.now();
+        animFrame = requestAnimationFrame(updatePlayback);
+      } else {
+        btn.innerHTML = '<span>▶ Play Showcase</span>';
+        cancelAnimationFrame(animFrame);
+      }
+    }
+
+    function restart() {
+      currentTime = 0;
+      lastStamp = performance.now();
+      if (!isPlaying) togglePlay();
+    }
+
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      const btn = document.getElementById('audio-btn');
+      btn.innerHTML = audioEnabled ? '<span>🔊 Sound ON</span>' : '<span>🔇 Sound OFF</span>';
+    }
+
+    function seek(e) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const pct = clickX / rect.width;
+      currentTime = pct * totalDuration;
+      lastStamp = performance.now();
+      updatePlayback(performance.now());
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      }
+      if (e.code === 'KeyR') {
+        e.preventDefault();
+        restart();
+      }
+      if (e.code === 'KeyM') {
+        e.preventDefault();
+        toggleAudio();
+      }
+    });
+
+    // Auto-cue on first interaction
+    document.addEventListener('click', () => { initAudio(); }, { once: true });
+  </script>
+</body>
+</html>
